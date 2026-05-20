@@ -737,10 +737,8 @@
     // User Nickname State
     let userNickname = '';
 
-    // PeerJS references
-    let myPeer = null;
+    // Connection & Synchronization references
     let peerStatus = 'disconnected'; // 'connecting' | 'connected' | 'hosting' | 'error' | 'disconnected'
-    let activeConnections = {}; // connection mapping by peer ID
     let reconnectTimer = null;
     let highestZ = 12;
 
@@ -1082,24 +1080,25 @@
     }, 1500); // Check every 1.5 seconds for extremely reactive client updates!
 
 
-    // ✦ WEB-RTC P2P NETWORK SETUP WITH PEERJS MANAGER
+    // ✦ REAL-TIME STATE SYNCING VIA SECURE WEBSOCKETS HUB
+    let liveSocket = null;
+
     function disconnectPeerSocketConnection() {
       if (reconnectTimer) {
-        clearInterval(reconnectTimer);
+        clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
 
-      Object.values(activeConnections).forEach((conn) => {
-        conn.close();
-      });
-      activeConnections = {};
-      updatePeersStatusVisuals(0);
-
-      if (myPeer) {
-        myPeer.destroy();
-        myPeer = null;
+      if (liveSocket) {
+        try {
+          liveSocket.onclose = null;
+          liveSocket.onerror = null;
+          liveSocket.close();
+        } catch (e) {}
+        liveSocket = null;
       }
       peerStatus = 'disconnected';
+      updatePeersStatusVisuals(0);
     }
 
     async function initializeP2PLinkNetwork() {
@@ -1131,114 +1130,90 @@
         renderSettingsDropdown();
       }
 
-      const hostId = `gmedranotic-host-${boardCode}`;
+      // Settle WebSocket connection
+      try {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+        console.log("[WS] Connecting to dynamic real-time sync server:", wsUrl);
 
-      if (role === 'editor') {
-        // Since we are Editor, let's claim to host standard serverless whiteboard hub
-        instantiateP2PHubHost(hostId);
-      } else {
-        // Viewer client directly
-        instantiateP2PClient(hostId);
+        liveSocket = new WebSocket(wsUrl);
+
+        liveSocket.onopen = () => {
+          console.log("[WS] Active synchronization link opened");
+          
+          // Claim membership in relevant board
+          liveSocket.send(JSON.stringify({
+            type: 'join',
+            boardCode: boardCode,
+            role: role
+          }));
+
+          if (role === 'editor') {
+            peerStatus = 'hosting';
+            setStatusNetworkProgress('hosting', 'Editando en Vivo (Servidor)');
+          } else {
+            peerStatus = 'connected';
+            setStatusNetworkProgress('connected', 'Conectado (Participante)');
+          }
+        };
+
+        liveSocket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'state-update' && data.boardState) {
+              console.log("[WS] State synchronization patch parsed from peer:", data.boardState);
+              boardState = data.boardState;
+              
+              // Sync local persistence
+              localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+
+              // Settle views
+              renderWhiteboardHeader();
+              renderWhiteboardCards();
+              renderSettingsDropdown();
+              addRecentRecord(boardState.code, boardState.title, role === 'editor');
+            } else if (data.type === 'peers-count' && typeof data.count === 'number') {
+              // Convert room size into active peers (other users besides this client)
+              const peerCountActive = Math.max(0, data.count - 1);
+              updatePeersStatusVisuals(peerCountActive);
+            }
+          } catch (e) {
+            console.error("[WS] Failed to compile incoming real-time packet:", e);
+          }
+        };
+
+        liveSocket.onclose = () => {
+          console.warn("[WS] Connection lost. Triggering auto-reconnect...");
+          handleSocketDropDisconnect();
+        };
+
+        liveSocket.onerror = (err) => {
+          console.error("[WS] Network communication error:", err);
+          handleSocketDropDisconnect();
+        };
+
+      } catch (err) {
+        console.error("[WS] Failed to instantiate socket layer:", err);
+        handleSocketDropDisconnect();
       }
     }
 
-    // HOST BROADCAST CONTROLLER WHITEBOARD (ACTS AS AUTHORITY)
-    function instantiateP2PHubHost(hostId) {
-      myPeer = new Peer(hostId, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
-        debug: 1,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
-          ]
-        }
-      });
-
-      myPeer.on('open', (id) => {
-        console.log('Hub host port binded successfully:', id);
-        peerStatus = 'hosting';
-        setStatusNetworkProgress('hosting', 'Hospedando (P2P Activo)');
-
-        // Use in-memory state if already loaded/created, otherwise load or generate
-        if (!boardState) {
-          const cached = localStorage.getItem(`gmt_state_${boardCode}`);
-          if (cached) {
-            try {
-              boardState = JSON.parse(cached);
-            } catch (e) {
-              initiateNewMasterState();
-            }
-          } else {
-            initiateNewMasterState();
+    function handleSocketDropDisconnect() {
+      if (peerStatus !== 'disconnected') {
+        peerStatus = 'error';
+        setStatusNetworkProgress('error', 'Reconectándose...');
+        updatePeersStatusVisuals(0);
+      }
+      
+      // Auto reconnect interval helper
+      if (!reconnectTimer) {
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          if (boardCode && peerStatus !== 'disconnected') {
+            initializeP2PLinkNetwork();
           }
-        }
-
-        addRecentRecord(boardCode, boardState.title, true);
-        renderWhiteboardHeader();
-        renderWhiteboardCards();
-        renderSettingsDropdown();
-      });
-
-      myPeer.on('connection', (conn) => {
-        console.log('Incoming viewer/editor client:', conn.peer);
-
-        conn.on('open', () => {
-          activeConnections[conn.peer] = conn;
-          updatePeersStatusVisuals(Object.keys(activeConnections).length);
-
-          // Deliver initial authority state bundle to joiner (serialized safely)
-          conn.send(JSON.stringify({
-            type: 'INITIAL_STATE',
-            payload: boardState
-          }));
-        });
-
-        conn.on('data', (raw) => {
-          let packet;
-          try {
-            packet = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            if (typeof packet === 'string') {
-              packet = JSON.parse(packet);
-            }
-          } catch (e) {
-            console.error("Error decoding host payload:", e);
-            return;
-          }
-          handleIncomingMutationsAsHost(conn, packet);
-        });
-
-        conn.on('close', () => {
-          delete activeConnections[conn.peer];
-          updatePeersStatusVisuals(Object.keys(activeConnections).length);
-        });
-
-        conn.on('error', () => {
-          delete activeConnections[conn.peer];
-          updatePeersStatusVisuals(Object.keys(activeConnections).length);
-        });
-      });
-
-      myPeer.on('error', (err) => {
-        console.warn('Host setup error code:', err.type);
-        if (err.type === 'unavailable-id') {
-          console.log('Whiteboard host port taken. Cleanly destroying old peer before merging as client editor of the active board.');
-          if (myPeer) {
-            myPeer.destroy();
-            myPeer = null;
-          }
-          instantiateP2PClient(hostId);
-        } else {
-          setStatusNetworkProgress('error', 'Fallo WebRTC P2P');
-        }
-      });
+        }, 3500);
+      }
     }
 
     function initiateNewMasterState() {
@@ -1255,175 +1230,13 @@
       updateAndSyncBoardState(boardState, true);
     }
 
-    // PARTICIPANT CLIENT WHITEBOARD
-    function instantiateP2PClient(targetHostId) {
-      const uniqueClientId = `gmedranotic-client-${boardCode}-${Math.random().toString(36).slice(2, 9)}`;
-      
-      myPeer = new Peer(uniqueClientId, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
-        debug: 1,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
-          ]
-        }
-      });
-
-      myPeer.on('open', (id) => {
-        console.log('Participant client identifier allocated:', id);
-        connectWhiteboardHost(targetHostId);
-      });
-
-      myPeer.on('error', (err) => {
-        console.error('Participant initialization error:', err);
-        if (err.type === 'peer-unavailable') {
-          // Host is offline or dropped. Promote current peer to Host if authorized!
-          if (role === 'editor') {
-            console.log('Original host unavailable. Automatically promoting current editor Workspace to Host.');
-            disconnectPeerSocketConnection();
-            instantiateP2PHubHost(targetHostId);
-          } else {
-            setStatusNetworkProgress('error', 'Anfitrión offline');
-            handleHostDisconnectedWhiteboard();
-          }
-        } else {
-          setStatusNetworkProgress('error', 'Fallo de iniciación');
-        }
-      });
-    }
-
-    function connectWhiteboardHost(targetHostId) {
-      if (!myPeer || myPeer.destroyed) return;
-
-      setStatusNetworkProgress('connecting', 'Buscando anfitrión...');
-      const conn = myPeer.connect(targetHostId, {
-        serialization: 'none'
-      });
-
-      conn.on('open', () => {
-        console.log('Whitespaces channel paired directly to Host:', targetHostId);
-        peerStatus = 'connected';
-        setStatusNetworkProgress('connected', 'Conectado (Participante)');
-        activeConnections[targetHostId] = conn;
-        updatePeersStatusVisuals(1);
-
-        // Notify credentials handshake
-        conn.send(JSON.stringify({
-          type: 'CONNECT_REQUEST',
-          payload: {
-            nickname: userNickname,
-            role: role
-          }
-        }));
-      });
-
-      conn.on('data', (raw) => {
-        let packet;
-        try {
-          packet = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (typeof packet === 'string') {
-            packet = JSON.parse(packet);
-          }
-        } catch (e) {
-          console.error("Error decoding client payload:", e);
-          return;
-        }
-        handleIncomingPacketsRawAsClient(packet);
-      });
-
-      conn.on('close', () => {
-        handleHostDisconnectedWhiteboard();
-      });
-
-      conn.on('error', (err) => {
-        handleHostDisconnectedWhiteboard();
-      });
-    }
-
-    function handleHostDisconnectedWhiteboard() {
-      setStatusNetworkProgress('error', 'Anfitrión offline');
-      delete activeConnections[`gmedranotic-host-${boardCode}`];
-      updatePeersStatusVisuals(0);
-
-      // Settle host swap promotion if current client has active editor privileges
-      if (role === 'editor') {
-        console.log('Original host closed session. Raising local Workspace as new coordinator Host...');
-        disconnectPeerSocketConnection();
-        instantiateP2PHubHost(`gmedranotic-host-${boardCode}`);
-        return;
-      }
-
-      // Auto reconnect interval thread trigger for viewers
-      if (!reconnectTimer) {
-        reconnectTimer = setInterval(() => {
-          console.log('Intentando re-establecer contacto con el Anfitrión principal...');
-          connectWhiteboardHost(`gmedranotic-host-${boardCode}`);
-        }, 8000);
-      }
-    }
-
-    // BROADCAST PAYLOAD GENERATOR
     function broadcastWHITEBOARDStateAcrossNodes(state) {
-      Object.values(activeConnections).forEach((conn) => {
-        if (conn.open) {
-          conn.send(JSON.stringify({
-            type: 'STATE_UPDATE',
-            payload: state
-          }));
-        }
-      });
-    }
-
-    // ACTIONS PROCESSING FOR BROKER NETWORK
-    function handleIncomingMutationsAsHost(conn, packet) {
-      if (!packet || !boardState) return;
-
-      switch (packet.type) {
-        case 'CONNECT_REQUEST':
-          console.log(`Par conectado: ${packet.payload.nickname} en rol: ${packet.payload.role}`);
-          break;
-
-        case 'WhiteboardAction':
-          const { actionType, payload } = packet.payload;
-          processWhiteboardActionDispatch(actionType, payload, true);
-          break;
-
-        default:
-          break;
-      }
-    }
-
-    function handleIncomingPacketsRawAsClient(packet) {
-      if (!packet) return;
-
-      // Squelch active reconnect intervals
-      if (reconnectTimer) {
-        clearInterval(reconnectTimer);
-        reconnectTimer = null;
-      }
-
-      if (packet.type === 'INITIAL_STATE' || packet.type === 'STATE_UPDATE') {
-        peerStatus = 'connected';
-        setStatusNetworkProgress('connected', 'Conectado (Sincronizado)');
-        
-        // Save state locally and update backup server cache sync
-        updateAndSyncBoardState(packet.payload);
-
-        // Save recents list
-        addRecentRecord(boardState.code, boardState.title, role === 'editor');
-        
-        // Settle layouts
-        renderWhiteboardHeader();
-        renderWhiteboardCards();
-        renderSettingsDropdown();
+      if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
+        liveSocket.send(JSON.stringify({
+          type: 'state-broadcast',
+          boardCode: boardCode,
+          boardState: state
+        }));
       }
     }
 
@@ -1431,25 +1244,18 @@
     function dispatchWhiteboardAction(actionType, payload) {
       if (!boardState) return;
 
-      if (peerStatus === 'hosting') {
-        processWhiteboardActionDispatch(actionType, payload, true);
-      } else {
-        // Participant client: Settle locally optimistically for zero lag experience
-        processWhiteboardActionDispatch(actionType, payload, false);
+      // Settle locally optimistically (zero lag!)
+      processWhiteboardActionDispatch(actionType, payload, false);
 
-        // Forward to Host for broadcasting authority validation
-        const conn = activeConnections[`gmedranotic-host-${boardCode}`];
-        if (conn && conn.open) {
-          conn.send(JSON.stringify({
-            type: 'WhiteboardAction',
-            payload: {
-              actionType,
-              payload
-            }
-          }));
-        } else {
-          console.warn('Conexión con el Host inactiva. Los cambios locales no se sincronizaron.');
-        }
+      // Forward to other connected devices
+      if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
+        liveSocket.send(JSON.stringify({
+          type: 'state-broadcast',
+          boardCode: boardCode,
+          boardState: boardState
+        }));
+      } else {
+        updateAndSyncBoardState(boardState, true);
       }
     }
 
@@ -1500,13 +1306,15 @@
         notes: workingNotes
       };
 
-      if (isHostSelf && peerStatus === 'hosting') {
+      if (peerStatus === 'hosting') {
         updateAndSyncBoardState(boardState);
         broadcastWHITEBOARDStateAcrossNodes(boardState);
       } else if (role === 'editor') {
         updateAndSyncBoardState(boardState, true);
+        broadcastWHITEBOARDStateAcrossNodes(boardState);
       } else {
         localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+        broadcastWHITEBOARDStateAcrossNodes(boardState);
       }
 
       // Redraw active views card
