@@ -1035,7 +1035,17 @@
     // HOST BROADCAST CONTROLLER WHITEBOARD (ACTS AS AUTHORITY)
     function instantiateP2PHubHost(hostId) {
       myPeer = new Peer(hostId, {
-        debug: 1
+        debug: 1,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+          ]
+        }
       });
 
       myPeer.on('open', (id) => {
@@ -1068,15 +1078,22 @@
           activeConnections[conn.peer] = conn;
           updatePeersStatusVisuals(Object.keys(activeConnections).length);
 
-          // Deliver initial authority state bundle to joiner
-          conn.send({
+          // Deliver initial authority state bundle to joiner (serialized safely)
+          conn.send(JSON.stringify({
             type: 'INITIAL_STATE',
             payload: boardState
-          });
+          }));
         });
 
-        conn.on('data', (data) => {
-          handleIncomingMutationsAsHost(conn, data);
+        conn.on('data', (raw) => {
+          let packet;
+          try {
+            packet = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          } catch (e) {
+            console.error("Error decoding host payload:", e);
+            return;
+          }
+          handleIncomingMutationsAsHost(conn, packet);
         });
 
         conn.on('close', () => {
@@ -1093,8 +1110,11 @@
       myPeer.on('error', (err) => {
         console.warn('Host setup error code:', err.type);
         if (err.type === 'unavailable-id') {
-          // Double host collision. Standardize as client editor to active bound peerJS instead!
-          console.log('Whiteboard host port taken. Merging as edit participant client.');
+          console.log('Whiteboard host port taken. Cleanly destroying old peer before merging as client editor of the active board.');
+          if (myPeer) {
+            myPeer.destroy();
+            myPeer = null;
+          }
           instantiateP2PClient(hostId);
         } else {
           setStatusNetworkProgress('error', 'Fallo WebRTC P2P');
@@ -1116,12 +1136,22 @@
       localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
     }
 
-    // PARTICIPANT سفید CLIENT Whitespace WHITEBOARD
+    // PARTICIPANT CLIENT WHITEBOARD
     function instantiateP2PClient(targetHostId) {
       const uniqueClientId = `gmedranotic-client-${boardCode}-${Math.random().toString(36).slice(2, 9)}`;
       
       myPeer = new Peer(uniqueClientId, {
-        debug: 1
+        debug: 1,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+          ]
+        }
       });
 
       myPeer.on('open', (id) => {
@@ -1131,7 +1161,19 @@
 
       myPeer.on('error', (err) => {
         console.error('Participant initialization error:', err);
-        setStatusNetworkProgress('error', 'Fallo de iniciación');
+        if (err.type === 'peer-unavailable') {
+          // Host is offline or dropped. Promote current peer to Host if authorized!
+          if (role === 'editor') {
+            console.log('Original host unavailable. Automatically promoting current editor Workspace to Host.');
+            disconnectPeerSocketConnection();
+            instantiateP2PHubHost(targetHostId);
+          } else {
+            setStatusNetworkProgress('error', 'Anfitrión offline');
+            handleHostDisconnectedWhiteboard();
+          }
+        } else {
+          setStatusNetworkProgress('error', 'Fallo de iniciación');
+        }
       });
     }
 
@@ -1151,16 +1193,23 @@
         updatePeersStatusVisuals(1);
 
         // Notify credentials handshake
-        conn.send({
+        conn.send(JSON.stringify({
           type: 'CONNECT_REQUEST',
           payload: {
             nickname: userNickname,
             role: role
           }
-        });
+        }));
       });
 
-      conn.on('data', (packet) => {
+      conn.on('data', (raw) => {
+        let packet;
+        try {
+          packet = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch (e) {
+          console.error("Error decoding client payload:", e);
+          return;
+        }
         handleIncomingPacketsRawAsClient(packet);
       });
 
@@ -1178,7 +1227,15 @@
       delete activeConnections[`gmedranotic-host-${boardCode}`];
       updatePeersStatusVisuals(0);
 
-      // Auto reconnect interval thread trigger
+      // Settle host swap promotion if current client has active editor privileges
+      if (role === 'editor') {
+        console.log('Original host closed session. Raising local Workspace as new coordinator Host...');
+        disconnectPeerSocketConnection();
+        instantiateP2PHubHost(`gmedranotic-host-${boardCode}`);
+        return;
+      }
+
+      // Auto reconnect interval thread trigger for viewers
       if (!reconnectTimer) {
         reconnectTimer = setInterval(() => {
           console.log('Intentando re-establecer contacto con el Anfitrión principal...');
@@ -1191,10 +1248,10 @@
     function broadcastWHITEBOARDStateAcrossNodes(state) {
       Object.values(activeConnections).forEach((conn) => {
         if (conn.open) {
-          conn.send({
+          conn.send(JSON.stringify({
             type: 'STATE_UPDATE',
             payload: state
-          });
+          }));
         }
       });
     }
@@ -1232,8 +1289,11 @@
         peerStatus = 'connected';
         setStatusNetworkProgress('connected', 'Conectado (Sincronizado)');
         
+        // Save state locally to ensure backup persistence in case of host transfers
+        localStorage.setItem(`gmt_state_${boardState.code}`, JSON.stringify(boardState));
+
         // Save recents list
-        addRecentRecord(boardState.code, boardState.title, role === 'editor');
+        addRecentRecord(boardState.code, boardState.title, role === 'editorial');
         
         // Settle layouts
         renderWhiteboardHeader();
@@ -1255,13 +1315,13 @@
         // Forward to Host for broadcasting authority validation
         const conn = activeConnections[`gmedranotic-host-${boardCode}`];
         if (conn && conn.open) {
-          conn.send({
+          conn.send(JSON.stringify({
             type: 'WhiteboardAction',
             payload: {
               actionType,
               payload
             }
-          });
+          }));
         } else {
           console.warn('Conexión con el Host inactiva. Los cambios locales no se sincronizaron.');
         }
