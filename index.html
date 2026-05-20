@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tablero de GmedranoTIC</title>
-  <meta name="description" content="Tablero colaborativo de texto e imágenes en tiempo real. Herramienta temporal sin servidor con PeerJS de GmedranoTIC.">
+  <meta name="description" content="Tablero colaborativo de texto e imágenes en tiempo real. Herramienta temporal sin servidor con PeerJS de @GmedranoTIC.">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -738,6 +738,8 @@
     let userNickname = '';
 
     // Connection & Synchronization references
+    let myPeer = null;
+    let activeConnections = {}; // Map of peer ID -> DataConnection
     let peerStatus = 'disconnected'; // 'connecting' | 'connected' | 'hosting' | 'error' | 'disconnected'
     let reconnectTimer = null;
     let highestZ = 12;
@@ -982,106 +984,33 @@
       role = 'viewer';
       editKey = '';
 
-      // Clean browser url query params
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.pushState({}, '', cleanUrl);
-
-      // Settle interfaces
-      document.getElementById('lobby').classList.remove('hidden');
-      document.getElementById('board').classList.add('hidden');
-      
-      // Redraw list record elements
-      renderLobbyRecents();
-    }
-
-
-    // ✦ REAL-TIME STATE SYNCING VIA FALLBACK SERVER WITH HIGH-RELIABILITY
-    async function updateAndSyncBoardState(updatedState, forceUpload = false) {
+      // Clean browser url query para    // ✦ REAL-TIME SEAMLESS SYNCHRONIZATION VIA PURE PEERJS WEBRTC
+    async function updateAndSyncBoardState(updatedState) {
       if (!updatedState) return;
       boardState = updatedState;
 
       // Persist to LocalStorage
       localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-
-      // If we are Host or if we have editor privileges/forceUpload is true, push state to fallback server
-      if (peerStatus === 'hosting' || forceUpload || role === 'editor') {
-        try {
-          await fetch(`/api/board/${boardCode}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ boardState: boardState })
-          });
-        } catch (e) {
-          console.warn("Express server state synchronization fallback failed:", e);
-        }
-      }
     }
 
     async function loadBoardStateFromServer() {
       if (!boardCode) return false;
-      try {
-        const res = await fetch(`/api/board/${boardCode}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.success && data.boardState) {
-            console.log("State fetched successfully from dynamic Express fallback server:", data.boardState);
-            boardState = data.boardState;
-            
-            // Persist to LocalStorage
-            localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-            
-            // Render UI
-            renderWhiteboardHeader();
-            renderWhiteboardCards();
-            renderSettingsDropdown();
-            
-            // If PeerJS isn't successfully connected yet, show Server connected!
-            if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
-              setStatusNetworkProgress('server-sync', 'Conectado (Servidor)');
-            }
-            return true;
-          }
+      const cached = localStorage.getItem(`gmt_state_${boardCode}`);
+      if (cached) {
+        try {
+          boardState = JSON.parse(cached);
+          
+          // Render interfaces instantly
+          renderWhiteboardHeader();
+          renderWhiteboardCards();
+          renderSettingsDropdown();
+          return true;
+        } catch (e) {
+          return false;
         }
-      } catch (e) {
-        console.warn("Could not retrieve state from backend server:", e);
       }
       return false;
     }
-
-    // High-performance background sync loop
-    setInterval(async () => {
-      // If we are currently in board view and PeerJS is connecting/not hosting, do HTTP polling
-      if (boardCode && peerStatus !== 'hosting' && peerStatus !== 'connected') {
-        try {
-          const res = await fetch(`/api/board/${boardCode}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.success && data.boardState) {
-              const localStr = localStorage.getItem(`gmt_state_${boardCode}`);
-              const serverStr = JSON.stringify(data.boardState);
-              if (localStr !== serverStr) {
-                console.log("Synchronizing Board state from Express fallback server...");
-                boardState = data.boardState;
-                localStorage.setItem(`gmt_state_${boardCode}`, serverStr);
-                renderWhiteboardCards();
-                renderWhiteboardHeader();
-                renderSettingsDropdown();
-              }
-              
-              if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
-                setStatusNetworkProgress('server-sync', 'Conectado (Servidor)');
-              }
-            }
-          }
-        } catch (e) {
-          // Ignore connection errors during background updates
-        }
-      }
-    }, 1500); // Check every 1.5 seconds for extremely reactive client updates!
-
-
-    // ✦ REAL-TIME STATE SYNCING VIA SECURE WEBSOCKETS HUB
-    let liveSocket = null;
 
     function disconnectPeerSocketConnection() {
       if (reconnectTimer) {
@@ -1089,130 +1018,227 @@
         reconnectTimer = null;
       }
 
-      if (liveSocket) {
+      // Close all direct WebRTC node connections safely
+      Object.keys(activeConnections).forEach((peerId) => {
         try {
-          liveSocket.onclose = null;
-          liveSocket.onerror = null;
-          liveSocket.close();
+          activeConnections[peerId].close();
         } catch (e) {}
-        liveSocket = null;
+        delete activeConnections[peerId];
+      });
+
+      if (myPeer) {
+        try {
+          myPeer.destroy();
+        } catch (e) {}
+        myPeer = null;
       }
+
       peerStatus = 'disconnected';
       updatePeersStatusVisuals(0);
     }
 
     async function initializeP2PLinkNetwork() {
       disconnectPeerSocketConnection();
-      setStatusNetworkProgress('connecting', 'Estableciendo comunicación...');
+      setStatusNetworkProgress('connecting', 'Estableciendo WebRTC (PeerJS)...');
 
-      // Retrieve state instantly from persistent fallback server first
-      const loaded = await loadBoardStateFromServer();
+      // Attempt loading state from local cache memory
+      const hasCachedState = await loadBoardStateFromServer();
 
-      if (!loaded && role === 'editor') {
-        console.log("No state found on server. Initializing master board state immediately...");
-        const cached = localStorage.getItem(`gmt_state_${boardCode}`);
-        if (cached) {
-          try {
-            boardState = JSON.parse(cached);
-          } catch (e) {
-            initiateNewMasterState();
-          }
-        } else {
-          initiateNewMasterState();
+      if (!hasCachedState && role === 'editor') {
+        console.log("[P2P] No saved state. Constructing raw new master whiteboard workspace...");
+        initiateNewMasterState();
+      }
+
+      // First device to register acts as the primary anchor/hub coordinator for the session
+      const anchorId = `gmedranotic-board-anchor-${boardCode}`;
+      console.log("[P2P] Registering discovery anchor ID on PeerJS Cloud:", anchorId);
+
+      myPeer = new Peer(anchorId, {
+        debug: 1,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+          ]
         }
+      });
 
-        // Push this state immediately to the Server so other viewers can fetch it instantly!
-        await updateAndSyncBoardState(boardState, true);
+      myPeer.on('open', (id) => {
+        console.log("[P2P] Anchor registered successfully. Acting as HOST for this session:", id);
+        peerStatus = 'hosting';
+        setStatusNetworkProgress('hosting', 'Pizarra Activa (P2P Host)');
 
-        // Render UI immediately
+        // Listen for incoming collaborative nodes
+        myPeer.on('connection', (conn) => {
+          setupConnection(conn, true);
+        });
+
         renderWhiteboardHeader();
         renderWhiteboardCards();
         renderSettingsDropdown();
-      }
+      });
 
-      // Settle WebSocket connection
-      try {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-        console.log("[WS] Connecting to dynamic real-time sync server:", wsUrl);
+      myPeer.on('error', (err) => {
+        console.warn("[P2P] PeerJS registration error:", err.type, err);
 
-        liveSocket = new WebSocket(wsUrl);
-
-        liveSocket.onopen = () => {
-          console.log("[WS] Active synchronization link opened");
+        if (err.type === 'unavailable-id') {
+          // Anchor is already registered (someone else is Host)! We register as collaborative client node.
+          console.log("[P2P] Discovery Anchor is busy. Creating uniquely designated peer client...");
           
-          // Claim membership in relevant board
-          liveSocket.send(JSON.stringify({
-            type: 'join',
-            boardCode: boardCode,
-            role: role
-          }));
-
-          if (role === 'editor') {
-            peerStatus = 'hosting';
-            setStatusNetworkProgress('hosting', 'Editando en Vivo (Servidor)');
-          } else {
-            peerStatus = 'connected';
-            setStatusNetworkProgress('connected', 'Conectado (Participante)');
+          if (myPeer) {
+            myPeer.destroy();
+            myPeer = null;
           }
-        };
 
-        liveSocket.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'state-update' && data.boardState) {
-              console.log("[WS] State synchronization patch parsed from peer:", data.boardState);
-              boardState = data.boardState;
-              
-              // Sync local persistence
-              localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-
-              // Settle views
-              renderWhiteboardHeader();
-              renderWhiteboardCards();
-              renderSettingsDropdown();
-              addRecentRecord(boardState.code, boardState.title, role === 'editor');
-            } else if (data.type === 'peers-count' && typeof data.count === 'number') {
-              // Convert room size into active peers (other users besides this client)
-              const peerCountActive = Math.max(0, data.count - 1);
-              updatePeersStatusVisuals(peerCountActive);
+          const uniqueClientId = `gmedranotic-peer-${boardCode}-${Math.random().toString(36).substring(2, 9)}`;
+          myPeer = new Peer(uniqueClientId, {
+            debug: 1,
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+              ]
             }
-          } catch (e) {
-            console.error("[WS] Failed to compile incoming real-time packet:", e);
-          }
-        };
+          });
 
-        liveSocket.onclose = () => {
-          console.warn("[WS] Connection lost. Triggering auto-reconnect...");
-          handleSocketDropDisconnect();
-        };
+          myPeer.on('open', (clientId) => {
+            console.log("[P2P] Client peer successfully registered:", clientId);
+            peerStatus = 'connecting';
+            setStatusNetworkProgress('connecting', 'Filtrando con Host...');
 
-        liveSocket.onerror = (err) => {
-          console.error("[WS] Network communication error:", err);
-          handleSocketDropDisconnect();
-        };
+            // Connect directly to the anchor coordinator for this board session
+            const conn = myPeer.connect(anchorId);
+            setupConnection(conn, false);
+          });
 
-      } catch (err) {
-        console.error("[WS] Failed to instantiate socket layer:", err);
-        handleSocketDropDisconnect();
-      }
+          myPeer.on('error', (clientErr) => {
+            console.error("[P2P] Client network error:", clientErr);
+            setStatusNetworkProgress('error', 'Error de red PeerJS');
+          });
+
+        } else if (err.type === 'peer-unavailable') {
+          console.log("[P2P] Anchor disappeared. Promoting self to coordinator host...");
+          handleAnchorLoss();
+        } else {
+          setStatusNetworkProgress('error', 'Fallo conexión P2P');
+        }
+      });
     }
 
-    function handleSocketDropDisconnect() {
-      if (peerStatus !== 'disconnected') {
-        peerStatus = 'error';
-        setStatusNetworkProgress('error', 'Reconectándose...');
-        updatePeersStatusVisuals(0);
-      }
+    function setupConnection(conn, isServerHost) {
+      console.log(`[P2P] Bonding node connection channel with peer: ${conn.peer}. We are Host? ${isServerHost}`);
+
+      conn.on('open', () => {
+        activeConnections[conn.peer] = conn;
+        // Number of other connected users
+        updatePeersStatusVisuals(Object.keys(activeConnections).length);
+
+        if (isServerHost) {
+          // Send master state to client
+          setStatusNetworkProgress('hosting', 'Pizarra Activa (P2P Host)');
+          conn.send({
+            type: 'STATE_SHARE',
+            payload: boardState
+          });
+        } else {
+          peerStatus = 'connected';
+          setStatusNetworkProgress('connected', 'Conectado (Participante P2P)');
+        }
+      });
+
+      conn.on('data', (data) => {
+        if (!data) return;
+        console.log(`[P2P] Decoded incoming packet [${data.type}] from peer: ${conn.peer}`);
+
+        if (data.type === 'STATE_SHARE') {
+          if (data.payload) {
+            boardState = data.payload;
+            localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+            addRecentRecord(boardState.code, boardState.title, role === 'editor');
+            
+            renderWhiteboardHeader();
+            renderWhiteboardCards();
+            renderSettingsDropdown();
+          }
+        } else if (data.type === 'ACTION_DISPATCH') {
+          const { actionType, payload } = data;
+          processWhiteboardActionDispatch(actionType, payload, false);
+
+          if (isServerHost) {
+            // Anchor coordinates and broadcasts action to all other client channels
+            broadcastToAllPeers({
+              type: 'ACTION_DISPATCH',
+              actionType,
+              payload
+            }, conn.peer);
+          }
+        } else if (data.type === 'STATE_BROADCAST') {
+          if (data.payload) {
+            boardState = data.payload;
+            localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+            renderWhiteboardHeader();
+            renderWhiteboardCards();
+            renderSettingsDropdown();
+
+            if (isServerHost) {
+              // Share state update to all other devices
+              broadcastToAllPeers({
+                type: 'STATE_SHARE',
+                payload: boardState
+              }, conn.peer);
+            }
+          }
+        }
+      });
+
+      conn.on('close', () => {
+        console.log("[P2P] Peer connection closed:", conn.peer);
+        delete activeConnections[conn.peer];
+        updatePeersStatusVisuals(Object.keys(activeConnections).length);
+
+        if (!isServerHost) {
+          console.warn("[P2P] Disconnected from Host anchor. Initiating promotion...");
+          handleAnchorLoss();
+        }
+      });
+
+      conn.on('error', (err) => {
+        console.error("[P2P] Connection error with peer:", conn.peer, err);
+        delete activeConnections[conn.peer];
+        updatePeersStatusVisuals(Object.keys(activeConnections).length);
+      });
+    }
+
+    function broadcastToAllPeers(message, excludePeerId) {
+      Object.keys(activeConnections).forEach((peerId) => {
+        if (peerId !== excludePeerId) {
+          const conn = activeConnections[peerId];
+          if (conn && conn.open) {
+            conn.send(message);
+          }
+        }
+      });
+    }
+
+    function handleAnchorLoss() {
+      disconnectPeerSocketConnection();
+      setStatusNetworkProgress('connecting', 'Reconectando con la Red...');
       
-      // Auto reconnect interval helper
       if (!reconnectTimer) {
         reconnectTimer = setTimeout(() => {
           reconnectTimer = null;
-          if (boardCode && peerStatus !== 'disconnected') {
+          if (boardCode) {
             initializeP2PLinkNetwork();
           }
-        }, 3500);
+        }, 1500);
       }
     }
 
@@ -1226,37 +1252,29 @@
         createdAt: new Date().toISOString(),
         notes: {}
       };
-      
-      updateAndSyncBoardState(boardState, true);
+      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
     }
 
     function broadcastWHITEBOARDStateAcrossNodes(state) {
-      if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
-        liveSocket.send(JSON.stringify({
-          type: 'state-broadcast',
-          boardCode: boardCode,
-          boardState: state
-        }));
-      }
+      broadcastToAllPeers({
+        type: 'STATE_SHARE',
+        payload: state
+      });
     }
 
     // DISPATCH ACTION PIPELINE
     function dispatchWhiteboardAction(actionType, payload) {
       if (!boardState) return;
 
-      // Settle locally optimistically (zero lag!)
+      // Optimistic local update (perfect instant response experience!)
       processWhiteboardActionDispatch(actionType, payload, false);
 
-      // Forward to other connected devices
-      if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
-        liveSocket.send(JSON.stringify({
-          type: 'state-broadcast',
-          boardCode: boardCode,
-          boardState: boardState
-        }));
-      } else {
-        updateAndSyncBoardState(boardState, true);
-      }
+      // Notify and multiplex across peers
+      broadcastToAllPeers({
+        type: 'ACTION_DISPATCH',
+        actionType,
+        payload
+      });
     }
 
     function processWhiteboardActionDispatch(actionType, payload, isHostSelf) {
@@ -1306,16 +1324,7 @@
         notes: workingNotes
       };
 
-      if (peerStatus === 'hosting') {
-        updateAndSyncBoardState(boardState);
-        broadcastWHITEBOARDStateAcrossNodes(boardState);
-      } else if (role === 'editor') {
-        updateAndSyncBoardState(boardState, true);
-        broadcastWHITEBOARDStateAcrossNodes(boardState);
-      } else {
-        localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-        broadcastWHITEBOARDStateAcrossNodes(boardState);
-      }
+      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
 
       // Redraw active views card
       renderWhiteboardCards();
