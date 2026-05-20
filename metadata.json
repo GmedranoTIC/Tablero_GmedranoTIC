@@ -1,0 +1,6 @@
+{
+  "name": "Tablero de GmedranoTIC",
+  "description": "Tablero colaborativo P2P temporal y en tiempo real. Comparte notas, imágenes y textos con código QR o enlace.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
