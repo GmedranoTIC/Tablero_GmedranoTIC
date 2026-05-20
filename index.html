@@ -997,6 +997,93 @@
     }
 
 
+    // ✦ REAL-TIME STATE SYNCING VIA FALLBACK SERVER WITH HIGH-RELIABILITY
+    async function updateAndSyncBoardState(updatedState, forceUpload = false) {
+      if (!updatedState) return;
+      boardState = updatedState;
+
+      // Persist to LocalStorage
+      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+
+      // If we are Host or if we have editor privileges/forceUpload is true, push state to fallback server
+      if (peerStatus === 'hosting' || forceUpload || role === 'editor') {
+        try {
+          await fetch(`/api/board/${boardCode}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boardState: boardState })
+          });
+        } catch (e) {
+          console.warn("Express server state synchronization fallback failed:", e);
+        }
+      }
+    }
+
+    async function loadBoardStateFromServer() {
+      if (!boardCode) return false;
+      try {
+        const res = await fetch(`/api/board/${boardCode}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.boardState) {
+            console.log("State fetched successfully from dynamic Express fallback server:", data.boardState);
+            boardState = data.boardState;
+            
+            // Persist to LocalStorage
+            localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+            
+            // Render UI
+            renderWhiteboardHeader();
+            renderWhiteboardCards();
+            renderSettingsDropdown();
+            
+            // If PeerJS isn't successfully connected yet, we can hide the connecting states or show Server connected!
+            if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
+              setStatusNetworkProgress('connected', 'Conectado (Servidor)');
+              peerStatus = 'connected';
+            }
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not retrieve state from backend server:", e);
+      }
+      return false;
+    }
+
+    // High-performance background sync loop
+    setInterval(async () => {
+      // If we are currently in board view and PeerJS is connecting or fallback is needed, do HTTP polling
+      if (boardCode && peerStatus !== 'hosting') {
+        try {
+          const res = await fetch(`/api/board/${boardCode}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.success && data.boardState) {
+              const localStr = localStorage.getItem(`gmt_state_${boardCode}`);
+              const serverStr = JSON.stringify(data.boardState);
+              if (localStr !== serverStr) {
+                console.log("Synchronizing Board state from Express fallback server...");
+                boardState = data.boardState;
+                localStorage.setItem(`gmt_state_${boardCode}`, serverStr);
+                renderWhiteboardCards();
+                renderWhiteboardHeader();
+                renderSettingsDropdown();
+                
+                if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
+                  setStatusNetworkProgress('connected', 'Conectado (Servidor)');
+                  peerStatus = 'connected';
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore connection errors during background updates
+        }
+      }
+    }, 2500); // Check every 2.5 seconds for extremely reactive client updates!
+
+
     // ✦ WEB-RTC P2P NETWORK SETUP WITH PEERJS MANAGER
     function disconnectPeerSocketConnection() {
       if (reconnectTimer) {
@@ -1017,9 +1104,12 @@
       peerStatus = 'disconnected';
     }
 
-    function initializeP2PLinkNetwork() {
+    async function initializeP2PLinkNetwork() {
       disconnectPeerSocketConnection();
       setStatusNetworkProgress('connecting', 'Estableciendo comunicación...');
+
+      // Retrieve state instantly from persistent fallback server first
+      await loadBoardStateFromServer();
 
       const hostId = `gmedranotic-host-${boardCode}`;
 
@@ -1140,7 +1230,7 @@
         notes: {}
       };
       
-      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+      updateAndSyncBoardState(boardState, true);
     }
 
     // PARTICIPANT CLIENT WHITEBOARD
@@ -1299,12 +1389,11 @@
       }
 
       if (packet.type === 'INITIAL_STATE' || packet.type === 'STATE_UPDATE') {
-        boardState = packet.payload;
         peerStatus = 'connected';
         setStatusNetworkProgress('connected', 'Conectado (Sincronizado)');
         
-        // Save state locally to ensure backup persistence in case of host transfers
-        localStorage.setItem(`gmt_state_${boardState.code}`, JSON.stringify(boardState));
+        // Save state locally and update backup server cache sync
+        updateAndSyncBoardState(packet.payload);
 
         // Save recents list
         addRecentRecord(boardState.code, boardState.title, role === 'editor');
@@ -1390,8 +1479,12 @@
       };
 
       if (isHostSelf && peerStatus === 'hosting') {
-        localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+        updateAndSyncBoardState(boardState);
         broadcastWHITEBOARDStateAcrossNodes(boardState);
+      } else if (role === 'editor') {
+        updateAndSyncBoardState(boardState, true);
+      } else {
+        localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
       }
 
       // Redraw active views card
@@ -1771,7 +1864,7 @@
         };
         
         if (peerStatus === 'hosting') {
-          localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+          updateAndSyncBoardState(boardState);
           broadcastWHITEBOARDStateAcrossNodes(boardState);
         }
         renderWhiteboardCards();
@@ -2125,8 +2218,7 @@
           ...boardState,
           wallpaper: themeId
         };
-        boardState = updated;
-        localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
+        updateAndSyncBoardState(updated);
         renderWhiteboardHeader();
         renderSettingsDropdown();
         broadcastWHITEBOARDStateAcrossNodes(boardState);
