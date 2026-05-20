@@ -1035,6 +1035,10 @@
     // HOST BROADCAST CONTROLLER WHITEBOARD (ACTS AS AUTHORITY)
     function instantiateP2PHubHost(hostId) {
       myPeer = new Peer(hostId, {
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
         debug: 1,
         config: {
           iceServers: [
@@ -1089,6 +1093,9 @@
           let packet;
           try {
             packet = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (typeof packet === 'string') {
+              packet = JSON.parse(packet);
+            }
           } catch (e) {
             console.error("Error decoding host payload:", e);
             return;
@@ -1141,6 +1148,10 @@
       const uniqueClientId = `gmedranotic-client-${boardCode}-${Math.random().toString(36).slice(2, 9)}`;
       
       myPeer = new Peer(uniqueClientId, {
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
         debug: 1,
         config: {
           iceServers: [
@@ -1182,7 +1193,7 @@
 
       setStatusNetworkProgress('connecting', 'Buscando anfitrión...');
       const conn = myPeer.connect(targetHostId, {
-        serialization: 'json'
+        serialization: 'none'
       });
 
       conn.on('open', () => {
@@ -1206,6 +1217,9 @@
         let packet;
         try {
           packet = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (typeof packet === 'string') {
+            packet = JSON.parse(packet);
+          }
         } catch (e) {
           console.error("Error decoding client payload:", e);
           return;
@@ -1293,7 +1307,7 @@
         localStorage.setItem(`gmt_state_${boardState.code}`, JSON.stringify(boardState));
 
         // Save recents list
-        addRecentRecord(boardState.code, boardState.title, role === 'editorial');
+        addRecentRecord(boardState.code, boardState.title, role === 'editor');
         
         // Settle layouts
         renderWhiteboardHeader();
