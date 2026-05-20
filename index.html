@@ -1037,10 +1037,9 @@
             renderWhiteboardCards();
             renderSettingsDropdown();
             
-            // If PeerJS isn't successfully connected yet, we can hide the connecting states or show Server connected!
+            // If PeerJS isn't successfully connected yet, show Server connected!
             if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
-              setStatusNetworkProgress('connected', 'Conectado (Servidor)');
-              peerStatus = 'connected';
+              setStatusNetworkProgress('server-sync', 'Conectado (Servidor)');
             }
             return true;
           }
@@ -1053,8 +1052,8 @@
 
     // High-performance background sync loop
     setInterval(async () => {
-      // If we are currently in board view and PeerJS is connecting or fallback is needed, do HTTP polling
-      if (boardCode && peerStatus !== 'hosting') {
+      // If we are currently in board view and PeerJS is connecting/not hosting, do HTTP polling
+      if (boardCode && peerStatus !== 'hosting' && peerStatus !== 'connected') {
         try {
           const res = await fetch(`/api/board/${boardCode}`);
           if (res.ok) {
@@ -1069,11 +1068,10 @@
                 renderWhiteboardCards();
                 renderWhiteboardHeader();
                 renderSettingsDropdown();
-                
-                if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
-                  setStatusNetworkProgress('connected', 'Conectado (Servidor)');
-                  peerStatus = 'connected';
-                }
+              }
+              
+              if (peerStatus !== 'hosting' && peerStatus !== 'connected') {
+                setStatusNetworkProgress('server-sync', 'Conectado (Servidor)');
               }
             }
           }
@@ -1081,7 +1079,7 @@
           // Ignore connection errors during background updates
         }
       }
-    }, 2500); // Check every 2.5 seconds for extremely reactive client updates!
+    }, 1500); // Check every 1.5 seconds for extremely reactive client updates!
 
 
     // ✦ WEB-RTC P2P NETWORK SETUP WITH PEERJS MANAGER
@@ -1109,7 +1107,29 @@
       setStatusNetworkProgress('connecting', 'Estableciendo comunicación...');
 
       // Retrieve state instantly from persistent fallback server first
-      await loadBoardStateFromServer();
+      const loaded = await loadBoardStateFromServer();
+
+      if (!loaded && role === 'editor') {
+        console.log("No state found on server. Initializing master board state immediately...");
+        const cached = localStorage.getItem(`gmt_state_${boardCode}`);
+        if (cached) {
+          try {
+            boardState = JSON.parse(cached);
+          } catch (e) {
+            initiateNewMasterState();
+          }
+        } else {
+          initiateNewMasterState();
+        }
+
+        // Push this state immediately to the Server so other viewers can fetch it instantly!
+        await updateAndSyncBoardState(boardState, true);
+
+        // Render UI immediately
+        renderWhiteboardHeader();
+        renderWhiteboardCards();
+        renderSettingsDropdown();
+      }
 
       const hostId = `gmedranotic-host-${boardCode}`;
 
@@ -1147,16 +1167,18 @@
         peerStatus = 'hosting';
         setStatusNetworkProgress('hosting', 'Hospedando (P2P Activo)');
 
-        // Load or generate master whiteboard database from LocalStorage
-        const cached = localStorage.getItem(`gmt_state_${boardCode}`);
-        if (cached) {
-          try {
-            boardState = JSON.parse(cached);
-          } catch (e) {
+        // Use in-memory state if already loaded/created, otherwise load or generate
+        if (!boardState) {
+          const cached = localStorage.getItem(`gmt_state_${boardCode}`);
+          if (cached) {
+            try {
+              boardState = JSON.parse(cached);
+            } catch (e) {
+              initiateNewMasterState();
+            }
+          } else {
             initiateNewMasterState();
           }
-        } else {
-          initiateNewMasterState();
         }
 
         addRecentRecord(boardCode, boardState.title, true);
@@ -1498,7 +1520,7 @@
       const textEl = document.getElementById('peer-status-text');
 
       dot.className = "w-2.5 h-2.5 rounded-full animate-pulse ";
-      if (type === 'hosting') {
+      if (type === 'hosting' || type === 'server-sync') {
         dot.classList.add('bg-emerald-500');
       } else if (type === 'connected') {
         dot.classList.add('bg-blue-500');
