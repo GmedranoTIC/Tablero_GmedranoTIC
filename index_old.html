@@ -126,35 +126,6 @@
         transform: translateY(0) scale(1);
       }
     }
-
-    /* Bouncing screensaver watermark */
-    @keyframes screensaver-bounce {
-      0% { transform: translate(2vw, 5vh); }
-      15% { transform: translate(55vw, 15vh); }
-      30% { transform: translate(10vw, 70vh); }
-      45% { transform: translate(62vw, 75vh); }
-      60% { transform: translate(4vw, 40vh); }
-      75% { transform: translate(50vw, 72vh); }
-      90% { transform: translate(40vw, 8vh); }
-      100% { transform: translate(2vw, 5vh); }
-    }
-    .screensaver-watermark {
-      position: fixed;
-      left: 0;
-      top: 0;
-      animation: screensaver-bounce 94s linear infinite;
-      white-space: nowrap;
-      pointer-events: none;
-      user-select: none;
-      z-index: 0;
-      color: rgba(26, 21, 18, 0.05); /* subtle elegant ink tint style */
-      font-family: 'Playfair Display', 'Georgia', serif;
-      font-weight: 700;
-      font-style: italic;
-    }
-    .bg-cyber .screensaver-watermark {
-      color: rgba(240, 240, 240, 0.035);
-    }
   </style>
 </head>
 <body class="bg-[#faf7f2] text-[#1a1512] font-sans antialiased min-h-screen">
@@ -447,8 +418,8 @@
       <div id="board-content" class="min-h-full p-6 sm:p-10 relative">
         
         <!-- Large Transparent elegant watermark -->
-        <div id="whiteboard-watermark" class="screensaver-watermark pointer-events-none select-none font-serif font-bold italic text-base sm:text-2xl z-0">
-          Tablero temporal de 24h de @GmedranoTIC
+        <div id="whiteboard-watermark" class="fixed right-8 bottom-8 pointer-events-none select-none font-serif font-bold italic text-3xl sm:text-5xl text-neutral-900/4 z-0">
+          GmedranoTIC
         </div>
 
         <!-- Notes grid layout / freeform canvas container -->
@@ -917,51 +888,20 @@
         };
 
         itemEl.innerHTML = `
-          <div class="min-w-0 flex-1 pr-2">
+          <div class="min-w-0">
             <span class="font-serif font-bold text-xs truncate block text-neutral-900">${item.title}</span>
             <span class="font-mono text-[9px] uppercase tracking-wider text-neutral-400 block mt-0.5">
               Código: <strong class="text-neutral-700">${item.code}</strong>
             </span>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${
-              item.hasKey ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-neutral-150 border-neutral-300 text-neutral-600'
-            }">
-              ${item.hasKey ? 'EDITOR' : 'LECTOR'}
-            </span>
-            <button
-              onclick="deleteRecentRecord(event, '${item.code}')"
-              class="w-6 h-6 rounded-md hover:bg-rose-50 hover:text-rose-650 flex items-center justify-center text-neutral-400 transition-colors shrink-0"
-              title="Eliminar de mi lista"
-            >
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
+          <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm shrink-0 border ${
+            item.hasKey ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-neutral-150 border-neutral-300 text-neutral-600'
+          }">
+            ${item.hasKey ? 'EDITOR' : 'LECTOR'}
+          </span>
         `;
         parent.appendChild(itemEl);
       });
-
-      // Refresh newly rendered trash icons
-      lucide.createIcons();
-    }
-
-    function deleteRecentRecord(event, code) {
-      if (event) event.stopPropagation();
-      const confirmed = confirm('¿Seguro que quieres eliminar este tablero de tu lista para que ya no aparezca en el menú principal?');
-      if (!confirmed) return;
-
-      let list = [];
-      try {
-        list = JSON.parse(localStorage.getItem('gmt_recents') || '[]');
-      } catch (e) {
-        list = [];
-      }
-
-      const filtered = list.filter(item => item.code !== code);
-      localStorage.setItem('gmt_recents', JSON.stringify(filtered));
-      localStorage.removeItem(`gmt_state_${code}`);
-
-      renderLobbyRecents();
     }
 
     function addRecentRecord(code, title, hasKey) {
@@ -2209,22 +2149,6 @@
       const loader = document.getElementById('pdf-exporting-overlay');
       loader.classList.remove('hidden');
 
-      // Unhide comment boxes and hide input forms to capture comments in the PDF
-      const hiddenBoxes = [];
-      const hiddenForms = [];
-
-      document.querySelectorAll('[id^="comments-box-"]').forEach((box) => {
-        if (box.classList.contains('hidden')) {
-          box.classList.remove('hidden');
-          hiddenBoxes.push(box);
-        }
-        const form = box.querySelector('form');
-        if (form && !form.classList.contains('hidden')) {
-          form.classList.add('hidden');
-          hiddenForms.push(form);
-        }
-      });
-
       try {
         // Set standard view offset top scroll
         window.scrollTo(0, 0);
@@ -2254,10 +2178,6 @@
         console.error(err);
         alert('Error al generar la captura PDF.');
       } finally {
-        // Restore previous states of comments boxes and forms
-        hiddenBoxes.forEach((box) => box.classList.add('hidden'));
-        hiddenForms.forEach((form) => form.classList.remove('hidden'));
-
         loader.classList.add('hidden');
       }
     }
