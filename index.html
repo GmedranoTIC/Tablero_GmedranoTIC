@@ -1,2355 +1,1467 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tablero de @GmedranoTIC</title>
-  <meta name="description" content="Tablero colaborativo de texto e imágenes en tiempo real. Herramienta temporal sin servidor con PeerJS de @GmedranoTIC. Creado para uso educativo.">
-  
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind CSS v3 via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Tailwind Custom Config -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: '#c8541a',
-            ink: '#1a1512',
-            paper: '#faf7f2',
-            paperDark: '#ebdfcf'
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            serif: ['Playfair Display', 'Georgia', 'serif'],
-            display: ['Outfit', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          }
-        }
-      }
-    }
-  </script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Comparte con @GmedranoTIC</title>
+<meta name="description" content="Tablero colaborativo temporal · @GmedranoTIC · 24h"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<style>
+:root{--ink:#1a1512;--ink2:#3d3630;--paper:#faf7f2;--paper2:#f2ede4;--accent:#c8541a;--gold:#d4a843;--teal:#2a7c6f;--border:rgba(26,21,18,0.12);--shadow:0 4px 24px rgba(26,21,18,0.10);}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;overflow-x:hidden;}
 
-  <!-- Lucide Icons Library -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+/* ── LOBBY ── */
+#lobby{display:flex;flex-direction:column;min-height:100vh;background:var(--paper);background-image:radial-gradient(rgba(26,21,18,.06) 1px,transparent 1px);background-size:20px 20px;}
+#lobby-inner{max-width:820px;margin:auto;padding:48px 20px 40px;display:flex;flex-direction:column;gap:28px;align-items:center;flex:1;}
+.logo-block{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.logo-svg{width:90px;height:90px;filter:drop-shadow(0 8px 20px rgba(200,84,26,.32));}
+.logo-title{font-family:'Playfair Display',serif;font-size:clamp(22px,5.5vw,40px);font-weight:700;line-height:1.1;letter-spacing:-.02em;}
+.logo-title span{color:var(--accent);font-style:italic;}
+.logo-sub{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.5;font-weight:500;}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border:1px solid var(--border);background:rgba(255,255,255,.7);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;border-radius:2px;}
+.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;}
+@media(max-width:580px){.lobby-grid{grid-template-columns:1fr;}}
+.lobby-card{background:rgba(255,255,255,.92);border:1px solid var(--border);padding:26px;box-shadow:var(--shadow);}
+.lobby-card h2{font-family:'Playfair Display',serif;font-size:17px;margin-bottom:16px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.lobby-card h2 svg{width:15px;height:15px;color:var(--accent);}
+.form-group{margin-bottom:13px;}
+label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-bottom:5px;opacity:.7;}
+input[type=text],textarea{width:100%;padding:9px 12px;border:1px solid var(--border);background:var(--paper);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;resize:none;}
+input[type=text]:focus,textarea:focus{border-color:var(--accent);}
+.btn-primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:var(--ink);color:var(--paper);border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:2px;}
+.btn-primary:hover{background:var(--accent);}
+.btn-primary svg{width:14px;height:14px;}
+.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:5px;}
+@media(max-width:480px){.theme-grid{grid-template-columns:repeat(3,1fr);}}
+.theme-btn{height:50px;border:2px solid transparent;cursor:pointer;position:relative;overflow:hidden;transition:all .2s;display:flex;flex-direction:column;justify-content:flex-end;padding:4px;}
+.theme-btn.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);}
+.theme-label{font-size:8px;font-weight:700;text-transform:uppercase;background:rgba(255,255,255,.9);color:var(--ink);padding:2px 4px;line-height:1.6;position:relative;z-index:1;}
+.join-panel{display:flex;flex-direction:column;gap:12px;}
+.code-input-wrap{display:flex;gap:8px;}
+.code-input{flex:1;padding:11px 14px;border:2px solid var(--border);background:var(--paper);font-family:'DM Mono',monospace;font-size:26px;font-weight:700;letter-spacing:.22em;text-align:center;text-transform:uppercase;color:var(--ink);outline:none;transition:border-color .2s;}
+.code-input:focus{border-color:var(--accent);}
+.code-join-btn{padding:11px 18px;background:var(--ink);color:var(--paper);border:none;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.code-join-btn:hover{background:var(--accent);}
+.recents-list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;}
+.recent-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);cursor:pointer;transition:all .2s;}
+.recent-item:hover{background:var(--ink);color:var(--paper);}
+.rname{font-size:13px;font-weight:600;}
+.rcode{font-size:10px;font-family:'DM Mono',monospace;opacity:.55;margin-top:2px;}
+.rbadge{font-size:9px;padding:2px 7px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
+.rbadge.edit{background:var(--accent);color:#fff;}
+.rbadge.view{background:var(--teal);color:#fff;}
+.empty-recents{font-size:12px;opacity:.45;text-align:center;padding:12px 0;font-style:italic;}
 
-  <!-- PeerJS WebRTC P2P Library -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+/* ── APP ── */
+#app{display:none;flex-direction:column;height:100vh;overflow:hidden;}
+#board-header{background:rgba(250,247,242,.97);border-bottom:1px solid var(--border);padding:0 14px;display:flex;align-items:center;gap:9px;min-height:54px;flex-shrink:0;z-index:100;backdrop-filter:blur(12px);flex-wrap:wrap;}
+.hdr-logo{display:flex;align-items:center;gap:7px;text-decoration:none;flex-shrink:0;}
+.hdr-logo-svg{width:28px;height:28px;}
+.hdr-title-wrap{display:flex;flex-direction:column;}
+.hdr-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;font-style:italic;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:185px;}
+.hdr-code{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.12em;opacity:.45;font-weight:500;}
+.hdr-badge{font-size:9px;font-weight:700;padding:2px 7px;border:1px solid currentColor;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;}
+.hdr-badge.editor{color:var(--accent);border-color:var(--accent);}
+.hdr-badge.viewer{color:var(--ink2);border-color:var(--border);opacity:.6;}
+.hdr-expiry{font-size:10px;font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px;white-space:nowrap;opacity:.65;}
+.hdr-expiry .dot{width:6px;height:6px;border-radius:50%;background:#e05;animation:pulse 1.5s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hdr-spacer{flex:1;}
+.hdr-btns{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.hdr-btn{display:flex;align-items:center;gap:4px;padding:6px 9px;border:1px solid var(--border);background:transparent;color:var(--ink);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.hdr-btn:hover{background:var(--ink);color:var(--paper);}
+.hdr-btn.accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.hdr-btn.accent:hover{background:var(--ink);}
+.hdr-btn svg{width:13px;height:13px;flex-shrink:0;}
+.layout-toggle{display:flex;border:1px solid var(--border);}
+.layout-toggle button{padding:6px 9px;background:transparent;border:none;cursor:pointer;color:var(--ink2);transition:all .2s;display:flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.layout-toggle button.active{background:var(--ink);color:var(--paper);}
+.layout-toggle button svg{width:12px;height:12px;}
 
-  <!-- html2canvas & jsPDF for PDF exporting -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+/* STATUS */
+#board-status{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 18px;font-size:12px;border-bottom:1px solid var(--border);z-index:50;flex-shrink:0;}
+#board-status[data-type=loading]{background:#f0f9ff;color:#075985;}
+#board-status[data-type=error]{background:#fff1f2;color:#9f1239;}
+#board-status[data-type=ok]{background:#f0fdf4;color:#14532d;}
+.status-spin{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-  <style type="text/css">
-    /* Theme backdrops */
-    .bg-editorial {
-      background-color: #faf7f2;
-      background-image: radial-gradient(rgba(26,21,18,0.06) 1.2px, transparent 1.2px);
-      background-size: 24px 24px;
-    }
-    .bg-minimalist {
-      background-color: #f2ede4;
-      background-image: linear-gradient(rgba(26,21,18,0.04) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(26,21,18,0.04) 1px, transparent 1px);
-      background-size: 24px 24px;
-    }
-    .bg-sunset {
-      background: linear-gradient(135deg, #f59e0b, #ea580c, #4f46e5);
-    }
-    .bg-sunset::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
-      background-size: 20px 20px;
-      pointer-events: none;
-    }
-    .bg-sage {
-      background: linear-gradient(135deg, #d1fae5, #a7f3d0, #6ee7b7);
-    }
-    .bg-sage::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(rgba(26,21,18,0.04) 1px, transparent 1px);
-      background-size: 22px 22px;
-      pointer-events: none;
-    }
-    .bg-cyber {
-      background-color: #0a0b0f;
-      background-image: radial-gradient(rgba(30,50,110,0.45) 1.2px, transparent 1.2px);
-      background-size: 24px 24px;
-    }
+/* BOARD */
+#board-main{flex:1;overflow:auto;position:relative;transition:background .4s;}
+#board-content{min-height:100%;padding:20px;position:relative;}
 
-    /* Scrollbars customization */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(26, 21, 18, 0.15);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(26, 21, 18, 0.3);
-    }
+/* WATERMARK */
+#board-main::after{
+  content:'@GmedranoTIC';
+  position:fixed;bottom:30px;right:30px;
+  font-family:'Playfair Display',serif;font-size:clamp(22px,3.5vw,42px);
+  font-weight:700;font-style:italic;
+  color:rgba(200,84,26,0.07);
+  pointer-events:none;z-index:0;white-space:nowrap;user-select:none;
+  transform:rotate(-8deg);
+  letter-spacing:.02em;
+}
 
-    /* Card dragging cursor enhancements */
-    .post-card.dragging {
-      box-shadow: 0 16px 48px rgba(26, 21, 18, 0.22);
-      transform: scale(1.02) rotate(0.4deg);
-      cursor: grabbing !important;
-      user-select: none;
-      pointer-events: none;
-    }
+/* CARDS */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:15px;align-items:start;}
+.cards-canvas{position:relative;min-height:70vh;}
+.post-card{border:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;position:relative;}
+.post-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(26,21,18,.12);}
+.post-card.canvas-mode{position:absolute;width:250px;cursor:grab;}
+.post-card.dragging{box-shadow:0 16px 48px rgba(26,21,18,.22);transform:scale(1.02) rotate(.5deg);z-index:999!important;}
+.card-top{padding:7px 11px 5px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,.06);background:rgba(0,0,0,.02);}
+.card-author{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.65;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;}
+.card-timer{display:flex;align-items:center;gap:3px;font-size:9px;font-family:'DM Mono',monospace;opacity:.48;white-space:nowrap;}
+.card-timer svg{width:10px;height:10px;}
+.card-image{overflow:hidden;max-height:185px;display:flex;align-items:center;background:rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.06);cursor:zoom-in;position:relative;}
+.card-image img{width:100%;height:100%;object-fit:cover;max-height:185px;transition:transform .3s;}
+.card-image:hover img{transform:scale(1.04);}
+.zoom-hint{position:absolute;bottom:7px;right:7px;background:rgba(0,0,0,.65);color:#fff;padding:3px 7px;font-size:9px;opacity:0;transition:opacity .2s;border-radius:2px;}
+.card-image:hover .zoom-hint{opacity:1;}
+.card-body{padding:11px;flex:1;}
+.card-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;margin-bottom:5px;line-height:1.3;}
+.card-text{font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;opacity:.85;}
+.card-footer{padding:6px 11px;border-top:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.01);}
+.card-actions{display:flex;align-items:center;gap:2px;}
+.card-btn{background:none;border:none;cursor:pointer;padding:4px 6px;display:flex;align-items:center;gap:3px;font-size:11px;opacity:.55;transition:all .2s;}
+.card-btn:hover{opacity:1;}
+.card-btn svg{width:13px;height:13px;}
+.card-editor-btns{display:flex;align-items:center;gap:1px;opacity:.35;transition:opacity .2s;}
+.post-card:hover .card-editor-btns{opacity:1;}
+.card-editor-btn{background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;opacity:.7;transition:all .2s;}
+.card-editor-btn:hover{opacity:1;}
+.card-editor-btn.del:hover svg{stroke:#cc0000;}
+.card-editor-btn svg{width:12px;height:12px;}
+.comments-panel{border-top:1px solid rgba(0,0,0,.07);background:rgba(0,0,0,.015);}
+.comments-list{max-height:115px;overflow-y:auto;padding:6px 11px;display:flex;flex-direction:column;gap:5px;border-bottom:1px solid rgba(0,0,0,.06);}
+.comment-item{background:#fff;padding:5px 8px;border:1px solid rgba(0,0,0,.06);}
+.comment-meta{display:flex;justify-content:space-between;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.55;margin-bottom:2px;}
+.comment-text{font-size:12px;line-height:1.5;}
+.no-comments{font-size:11px;text-align:center;opacity:.38;padding:8px 0;font-style:italic;}
+.comment-form{display:flex;padding:5px 7px;gap:5px;}
+.comment-form input{flex:1;padding:4px 9px;border:1px solid var(--border);background:var(--paper);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;}
+.comment-form input:focus{border-color:var(--accent);}
+.comment-submit{padding:4px 9px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;display:flex;align-items:center;transition:background .2s;}
+.comment-submit:hover{background:var(--accent);}
+.comment-submit svg{width:11px;height:11px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;text-align:center;gap:10px;padding:20px;}
+.empty-state svg{width:30px;height:30px;opacity:.18;}
+.empty-state h3{font-family:'Playfair Display',serif;font-size:22px;font-style:italic;opacity:.45;}
+.empty-state p{font-size:13px;opacity:.4;max-width:300px;line-height:1.6;}
+.empty-state button{margin-top:4px;padding:10px 20px;background:var(--ink);color:var(--paper);border:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s;}
+.empty-state button:hover{background:var(--accent);}
 
-    /* Animated entry */
-    .card-enter {
-      animation: cardIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    @keyframes cardIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px) scale(0.97);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
+/* FAB */
+#fab{position:fixed;bottom:20px;right:20px;display:none;align-items:center;gap:7px;padding:12px 18px;background:var(--ink);color:var(--paper);border:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;z-index:90;box-shadow:0 6px 24px rgba(26,21,18,.3);transition:all .2s;}
+#fab:hover{background:var(--accent);}
+#fab svg{width:14px;height:14px;}
 
-    /* Bouncing screensaver watermark */
-    @keyframes screensaver-bounce {
-      0% { transform: translate(2vw, 5vh); }
-      15% { transform: translate(55vw, 15vh); }
-      30% { transform: translate(10vw, 70vh); }
-      45% { transform: translate(62vw, 75vh); }
-      60% { transform: translate(4vw, 40vh); }
-      75% { transform: translate(50vw, 72vh); }
-      90% { transform: translate(40vw, 8vh); }
-      100% { transform: translate(2vw, 5vh); }
-    }
-    .screensaver-watermark {
-      position: fixed;
-      left: 0;
-      top: 0;
-      animation: screensaver-bounce 94s linear infinite;
-      white-space: nowrap;
-      pointer-events: none;
-      user-select: none;
-      z-index: 0;
-      color: rgba(26, 21, 18, 0.05); /* subtle elegant ink tint style */
-      font-family: 'Playfair Display', 'Georgia', serif;
-      font-weight: 400;
-      font-style: italic;
-    }
-    .bg-cyber .screensaver-watermark {
-      color: rgba(240, 240, 240, 0.045);
-    }
-  </style>
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(26,21,18,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto;}
+.modal-box{background:var(--paper);border:1px solid var(--border);max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(26,21,18,.2);animation:modalIn .18s ease-out;}
+@keyframes modalIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.modal-header{padding:15px 17px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--paper);z-index:1;}
+.modal-header h3{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.modal-header h3 svg{width:14px;height:14px;color:var(--accent);}
+.modal-close{background:none;border:none;cursor:pointer;padding:4px;opacity:.5;transition:opacity .2s;}
+.modal-close:hover{opacity:1;}
+.modal-close svg{width:16px;height:16px;}
+.modal-body{padding:17px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:460px){.form-row{grid-template-columns:1fr;}}
+.form-actions{display:flex;justify-content:flex-end;gap:7px;padding-top:13px;border-top:1px solid var(--border);margin-top:13px;}
+.btn-cancel{padding:8px 15px;background:transparent;border:1px solid var(--border);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.btn-cancel:hover{border-color:var(--ink);}
+.btn-save{padding:8px 15px;background:var(--ink);color:var(--paper);border:1px solid var(--ink);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;}
+.btn-save:hover{background:var(--accent);border-color:var(--accent);}
+.btn-save svg{width:13px;height:13px;}
+.color-picker{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;}
+.color-swatch{width:25px;height:25px;border:2px solid transparent;cursor:pointer;transition:all .2s;position:relative;}
+.color-swatch.active{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink);}
+.color-swatch.active::after{content:'';position:absolute;inset:50%;transform:translate(-50%,-50%);width:5px;height:5px;background:rgba(255,255,255,.75);border-radius:50%;}
+.drop-zone{border:2px dashed var(--border);padding:18px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.drop-zone.drag-over{border-color:var(--accent);background:rgba(200,84,26,.04);}
+.drop-zone svg{width:24px;height:24px;opacity:.28;margin:0 auto 6px;display:block;}
+.drop-zone p{font-size:12px;color:var(--ink2);opacity:.65;}
+.formats{font-size:10px;font-family:'DM Mono',monospace;opacity:.38;margin-top:3px;}
+.img-preview{position:relative;max-height:145px;overflow:hidden;border:1px solid var(--border);}
+.img-preview img{width:100%;object-fit:cover;max-height:145px;}
+.img-remove{position:absolute;top:6px;right:6px;background:rgba(26,21,18,.8);color:#fff;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;transition:background .2s;}
+.img-remove:hover{background:var(--accent);}
+.img-remove svg{width:11px;height:11px;}
+.compressing{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px;font-size:12px;opacity:.6;}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;}
+
+/* SHARE */
+.share-tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+.share-tab{padding:10px;background:none;border:none;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.share-tab.active{color:var(--ink);border-bottom-color:var(--ink);}
+.share-tab svg{width:12px;height:12px;}
+.code-display{text-align:center;padding:16px 12px 12px;border:1px solid var(--border);background:var(--paper2);margin-bottom:13px;}
+.code-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-bottom:5px;}
+.code-big{font-family:'DM Mono',monospace;font-size:40px;font-weight:700;letter-spacing:.28em;color:var(--ink);line-height:1;}
+.code-hint{font-size:11px;opacity:.4;margin-top:5px;}
+.share-warning{padding:10px 12px;border:1px solid rgba(200,84,26,.2);background:rgba(200,84,26,.05);font-size:12px;line-height:1.5;display:flex;gap:8px;align-items:flex-start;margin-bottom:13px;}
+.share-warning.warn-editor{border-color:rgba(200,84,26,.4);background:rgba(200,84,26,.08);}
+.share-warning svg{width:13px;height:13px;color:var(--accent);flex-shrink:0;margin-top:1px;}
+.qr-box{display:flex;flex-direction:column;align-items:center;gap:8px;padding:13px;border:1px solid var(--border);background:#fff;margin-bottom:13px;}
+.qr-box img{width:165px;height:165px;}
+.qr-hint{font-size:10px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.07em;opacity:.4;}
+.share-label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin-bottom:5px;}
+.link-copy-row{display:flex;gap:6px;}
+.link-input{flex:1;padding:8px 10px;border:1px solid var(--border);background:var(--paper2);font-family:'DM Mono',monospace;font-size:11px;color:var(--ink);outline:none;min-width:0;}
+.copy-btn{padding:8px 13px;background:var(--ink);color:var(--paper);border:none;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap;flex-shrink:0;}
+.copy-btn:hover{background:var(--accent);}
+.copy-btn svg{width:12px;height:12px;}
+.copy-btn.copied{background:var(--teal);}
+
+/* THEME DROPDOWN */
+#theme-picker-wrap{position:relative;}
+#theme-dropdown{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--paper);border:1px solid var(--border);width:185px;z-index:150;box-shadow:var(--shadow);}
+.theme-dd-head{padding:7px 12px 4px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.38;border-bottom:1px solid var(--border);}
+.theme-list-btn{width:100%;text-align:left;padding:8px 12px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;display:flex;align-items:center;justify-content:space-between;transition:background .15s;}
+.theme-list-btn:hover{background:var(--paper2);}
+
+/* ZOOM */
+#zoom-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:18px;cursor:zoom-out;}
+#zoom-overlay img{max-width:100%;max-height:90vh;object-fit:contain;box-shadow:0 24px 80px rgba(0,0,0,.5);}
+#zoom-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;padding:7px;display:flex;align-items:center;border-radius:50%;transition:background .2s;}
+#zoom-close:hover{background:rgba(255,255,255,.3);}
+#zoom-close svg{width:18px;height:18px;}
+#pdf-loading{position:fixed;inset:0;z-index:500;background:rgba(250,247,242,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;backdrop-filter:blur(8px);}
+#pdf-loading.visible{display:flex;}
+#pdf-loading .spin{width:28px;height:28px;border-width:3px;}
+#pdf-loading p{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.65;}
+
+/* SYNC indicator */
+#sync-pill{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;padding:5px 13px;background:var(--ink);color:var(--paper);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;z-index:80;border-radius:2px;box-shadow:var(--shadow);pointer-events:none;}
+#sync-pill.visible{display:flex;}
+#sync-pill .sdot{width:6px;height:6px;border-radius:50%;background:#4ade80;}
+
+/* BACKGROUNDS */
+.bg-editorial{background:#faf7f2;background-image:radial-gradient(rgba(26,21,18,.055) 1px,transparent 1px);background-size:22px 22px;}
+.bg-minimalist{background:#f2ede4;background-image:linear-gradient(rgba(26,21,18,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(26,21,18,.05) 1px,transparent 1px);background-size:24px 24px;}
+.bg-sunset{background:linear-gradient(135deg,#f59e0b,#ea580c,#4f46e5);}
+.bg-sage{background:linear-gradient(135deg,#d1fae5,#a7f3d0,#6ee7b7);}
+.bg-cyber{background:#0a0b0f;background-image:radial-gradient(rgba(30,50,100,.6) 1px,transparent 1px);background-size:24px 24px;}
+
+.card-enter{animation:cardIn .26s ease-out;}
+@keyframes cardIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+@media(max-width:600px){.hdr-title{max-width:105px;}.hdr-btn span,.layout-toggle button span,#fab span{display:none;}}
+</style>
 </head>
-<body class="bg-[#faf7f2] text-[#1a1512] font-sans antialiased min-h-screen">
+<body>
 
-  <!-- ════════════════ LOBBY PANE ════════════════ -->
-  <div id="lobby" class="min-h-screen flex flex-col justify-between py-12 px-4 relative overflow-hidden bg-editorial">
-    
-    <!-- Pattern watermark decoration -->
-    <div class="fixed inset-0 pointer-events-none select-none flex items-center justify-center opacity-[0.045] font-serif font-bold italic text-[15vw] z-0">
-      @GmedranoTIC
+<!-- ═══════════ LOBBY ═══════════ -->
+<div id="lobby">
+  <div id="lobby-inner">
+    <div class="logo-block">
+      <div class="pill">
+        <svg viewBox="0 0 16 16" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M5 8l2 2 4-4"/></svg>
+        Colaboración P2P · Sin servidor · 24h
+      </div>
+      <!-- Logo SVG mejorado -->
+      <svg class="logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="96" height="96" rx="18" fill="#1a1512"/>
+        <!-- tablero principal -->
+        <rect x="10" y="14" width="80" height="58" rx="5" fill="#faf7f2" opacity=".97"/>
+        <!-- barra superior -->
+        <rect x="10" y="14" width="80" height="10" rx="5" fill="#c8541a"/>
+        <rect x="10" y="19" width="80" height="5" fill="#c8541a"/>
+        <!-- botones barra -->
+        <circle cx="19" cy="19" r="2.5" fill="#fff" opacity=".5"/>
+        <circle cx="27" cy="19" r="2.5" fill="#fff" opacity=".35"/>
+        <circle cx="35" cy="19" r="2.5" fill="#fff" opacity=".25"/>
+        <!-- tarjetas -->
+        <rect x="15" y="29" width="28" height="19" rx="3" fill="#e8762a" opacity=".92"/>
+        <rect x="17" y="32" width="18" height="2" rx="1" fill="#fff" opacity=".85"/>
+        <rect x="17" y="36" width="13" height="1.5" rx=".75" fill="#fff" opacity=".5"/>
+        <rect x="17" y="39.5" width="15" height="1.5" rx=".75" fill="#fff" opacity=".4"/>
+        <rect x="17" y="43" width="10" height="1.5" rx=".75" fill="#fff" opacity=".3"/>
+        <rect x="47" y="29" width="28" height="19" rx="3" fill="#d4a843" opacity=".92"/>
+        <rect x="49" y="32" width="18" height="2" rx="1" fill="#fff" opacity=".85"/>
+        <rect x="49" y="36" width="12" height="1.5" rx=".75" fill="#fff" opacity=".5"/>
+        <rect x="49" y="39.5" width="16" height="1.5" rx=".75" fill="#fff" opacity=".4"/>
+        <rect x="15" y="52" width="28" height="16" rx="3" fill="#2a7c6f" opacity=".88"/>
+        <rect x="17" y="55" width="16" height="2" rx="1" fill="#fff" opacity=".8"/>
+        <rect x="17" y="59" width="12" height="1.5" rx=".75" fill="#fff" opacity=".45"/>
+        <rect x="47" y="52" width="28" height="16" rx="3" fill="#c8541a" opacity=".72"/>
+        <rect x="49" y="55" width="14" height="2" rx="1" fill="#fff" opacity=".75"/>
+        <rect x="49" y="59" width="11" height="1.5" rx=".75" fill="#fff" opacity=".4"/>
+        <!-- imagen en tarjeta -->
+        <rect x="79" y="29" width="7" height="5" rx="1" fill="#faf7f2" opacity=".6"/>
+        <!-- patas soporte -->
+        <rect x="34" y="72" width="5" height="11" rx="2.5" fill="#1a1512" opacity=".22"/>
+        <rect x="61" y="72" width="5" height="11" rx="2.5" fill="#1a1512" opacity=".22"/>
+        <rect x="24" y="82" width="52" height="4" rx="2" fill="#1a1512" opacity=".13"/>
+        <!-- conexión wifi/share icono arriba derecha -->
+        <circle cx="80" cy="19" r="2" fill="#fff" opacity=".8"/>
+        <path d="M76.5 16 Q80 13 83.5 16" stroke="#fff" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".6"/>
+        <path d="M74.5 14 Q80 10 85.5 14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".35"/>
+      </svg>
+      <div class="logo-title">Comparte con <span>@GmedranoTIC</span></div>
+      <div class="logo-sub">Tablero colaborativo visual · Expira en 24 horas · P2P</div>
     </div>
 
-    <!-- Header info / Logo Branding -->
-    <div class="max-w-4xl mx-auto w-full text-center space-y-6 shrink-0 z-10">
-      <div id="lobby-badge" class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-neutral-300 bg-white/70 text-[10px] font-bold uppercase tracking-widest text-brand select-none shadow-xs">
-        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-        P2P en tiempo real • Sin servidor central • Expira en 24h
-      </div>
-
-      <!-- Styled Vector branding -->
-      <div class="flex flex-col items-center gap-4 select-none">
-        <div class="w-20 h-20 bg-ink rounded-2xl flex items-center justify-center shadow-xl border border-black/20">
-          <svg viewBox="0 0 80 80" class="w-[84%] h-[84%]" fill="none">
-            <rect x="10" y="14" width="60" height="42" rx="4" fill="#faf7f2" opacity=".95" />
-            <rect x="10" y="14" width="60" height="8" rx="2" fill="#c8541a" />
-            <rect x="14" y="26" width="24" height="15" rx="3" fill="#ea580c" opacity=".9" />
-            <rect x="42" y="26" width="24" height="15" rx="3" fill="#eab308" opacity=".9" />
-            <rect x="14" y="45" width="52" height="6" rx="2.5" fill="#15803d" opacity=".8" />
-            <circle cx="40" cy="14" r="3.5" fill="#faf7f2" />
-            <circle cx="40" cy="14" r="1.5" fill="#c8541a" />
-          </svg>
-        </div>
-        <h1 class="font-serif font-bold text-4xl sm:text-5xl tracking-tight leading-none mt-2">
-          Tablero de <span class="text-brand italic">GmedranoTIC</span>
-        </h1>
-        <p class="text-sm text-neutral-500 max-w-lg mx-auto leading-relaxed">
-          El tablón colaborativo temporal e interactivo más simple. Sube textos o imágenes, organízate en mosaico o canvas libre, y colabora directamente usando tecnología PeerJS.
-        </p>
-      </div>
-    </div>
-
-    <!-- Main columns grid -->
-    <div class="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-8 my-8 z-10">
-      <!-- Card: Create Board -->
-      <div class="bg-white/95 border border-neutral-200/90 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between">
-        <div>
-          <h2 class="font-serif font-bold text-xl mb-2 flex items-center gap-2 text-neutral-900 select-none">
-            <i data-lucide="plus-circle" class="w-5 h-5 text-brand"></i> Crear nuevo tablero
-          </h2>
-          <p class="text-xs text-neutral-400 mb-6 leading-relaxed">
-            Instancia un espacio de notas único. Como fundador recibirás una clave de administrador para configurar y ordenar la pizarra en tiempo real.
-          </p>
-        </div>
-
-        <form id="create-board-form" class="space-y-4">
-          <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Título del espacio</label>
-            <input
-              type="text"
-              id="create-title-input"
-              required
-              maxlength="40"
-              placeholder="Ej. Clase de Electrotecnia ⚡"
-              class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-hidden focus:border-brand transition-colors text-neutral-800"
-            />
+    <div class="lobby-grid">
+      <!-- CREAR -->
+      <div class="lobby-card">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Crear tablero
+        </h2>
+        <form id="create-form">
+          <div class="form-group">
+            <label>Título</label>
+            <input type="text" id="cf-title" maxlength="60" placeholder="Ej. Clase de Tecnología 🎨" required/>
           </div>
-
-          <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Descripción / Objetivo</label>
-            <input
-              type="text"
-              id="create-desc-input"
-              maxlength="80"
-              placeholder="Ej. Compartamos ideas para el proyecto final"
-              class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-hidden focus:border-brand transition-colors text-neutral-800"
-            />
+          <div class="form-group">
+            <label>Descripción</label>
+            <input type="text" id="cf-desc" maxlength="120" placeholder="Espacio para compartir ideas..."/>
           </div>
-
-          <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Apariencia / Fondo decorativo</label>
-            <div class="grid grid-cols-3 gap-2" id="lobby-theme-grid">
-              <!-- Render themes inside dynamically -->
-            </div>
+          <div class="form-group">
+            <label>Fondo</label>
+            <div class="theme-grid" id="theme-grid"></div>
           </div>
-
-          <button
-            type="submit"
-            class="w-full bg-ink hover:bg-brand hover:shadow-lg transition-all text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-1.5"
-          >
-            Crear tablero colaborativo →
+          <button class="btn-primary" type="submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Crear tablero nuevo
           </button>
         </form>
       </div>
 
-      <!-- Card: Join Board -->
-      <div class="bg-white/95 border border-neutral-200/90 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between">
-        <div>
-          <h2 class="font-serif font-bold text-xl mb-2 flex items-center gap-2 text-neutral-900 select-none">
-            <i data-lucide="compass" class="w-5 h-5 text-brand"></i> Unirse / Ver código
-          </h2>
-          <p class="text-xs text-neutral-400 mb-6 leading-relaxed">
-            Escribe el código alfanumérico de 6 cifras facilitado por el creador para sincronizarte instantáneamente sin necesidad de registros.
-          </p>
-        </div>
-
-        <div class="space-y-6">
-          <form id="join-board-form" class="space-y-3">
-            <div class="flex flex-col gap-1">
-              <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Ingresar código del tablero</label>
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  id="join-code-input"
-                  required
-                  maxlength="6"
-                  placeholder="ABC123"
-                  class="flex-1 rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-center text-lg font-mono font-bold tracking-widest uppercase outline-hidden focus:border-brand focus:ring-1 focus:ring-neutral-200 text-ink"
-                />
-                <button
-                  type="submit"
-                  class="bg-ink hover:bg-brand text-white text-xs font-bold uppercase tracking-wider px-5 rounded-lg transition-all hover:shadow-md"
-                >
-                  Entrar
-                </button>
-              </div>
-            </div>
-          </form>
-
-          <!-- Recents List -->
-          <div class="pt-4 border-t border-neutral-100 select-none">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-2">Tableros visitados recientemente</label>
-            <div class="space-y-1.5 max-h-40 overflow-y-auto" id="lobby-recents-list">
-              <!-- Render recents list inside dynamically -->
+      <!-- UNIRSE -->
+      <div class="lobby-card">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Unirse a un tablero
+        </h2>
+        <form id="join-form" class="join-panel">
+          <div>
+            <label>Código de 6 letras</label>
+            <div class="code-input-wrap">
+              <input class="code-input" type="text" id="jf-code" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"/>
+              <button class="code-join-btn" type="submit">Entrar →</button>
             </div>
           </div>
+          <p style="font-size:12px;opacity:.45;line-height:1.5;">El código te lo comparte el creador. El enlace de editor permite añadir y editar contenido.</p>
+        </form>
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin-bottom:9px;">Tableros recientes</div>
+          <div id="recents-list"></div>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Footer info -->
-    <div class="text-center font-mono text-[10px] text-neutral-450 mt-6 shrink-0 select-none">
-      Tablero de GmedranoTIC © 2026. Diseñado con WebRTC de PeerJS.
+<!-- ═══════════ APP ═══════════ -->
+<div id="app">
+  <header id="board-header">
+    <a class="hdr-logo" href="#" id="back-to-lobby">
+      <svg class="hdr-logo-svg" viewBox="0 0 100 100" fill="none">
+        <rect x="2" y="2" width="96" height="96" rx="18" fill="#1a1512"/>
+        <rect x="10" y="14" width="80" height="58" rx="5" fill="#faf7f2" opacity=".97"/>
+        <rect x="10" y="14" width="80" height="10" rx="5" fill="#c8541a"/>
+        <rect x="10" y="19" width="80" height="5" fill="#c8541a"/>
+        <rect x="15" y="29" width="28" height="19" rx="3" fill="#e8762a" opacity=".9"/>
+        <rect x="47" y="29" width="28" height="19" rx="3" fill="#d4a843" opacity=".9"/>
+        <rect x="15" y="52" width="28" height="16" rx="3" fill="#2a7c6f" opacity=".85"/>
+        <rect x="47" y="52" width="28" height="16" rx="3" fill="#c8541a" opacity=".7"/>
+      </svg>
+    </a>
+    <div class="hdr-title-wrap">
+      <div class="hdr-title" id="hdr-board-title">Tablero</div>
+      <div class="hdr-code" id="hdr-board-code">Código: ––––––</div>
+    </div>
+    <div class="hdr-badge editor" id="hdr-badge">Editor</div>
+    <div class="hdr-expiry"><span class="dot"></span><span id="expiry-text">24h</span></div>
+    <div class="hdr-spacer"></div>
+    <div class="hdr-btns">
+      <div id="theme-picker-wrap" style="display:none;">
+        <button class="hdr-btn" id="theme-picker-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          <span>Tema</span>
+        </button>
+        <div id="theme-dropdown">
+          <div class="theme-dd-head">Estilo</div>
+          <div id="theme-list"></div>
+        </div>
+      </div>
+      <div class="layout-toggle">
+        <button id="layout-grid" class="active" onclick="setLayout('grid')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>Mosaico</span>
+        </button>
+        <button id="layout-canvas" onclick="setLayout('canvas')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>Libre</span>
+        </button>
+      </div>
+      <button class="hdr-btn" id="pdf-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>PDF</span>
+      </button>
+      <button class="hdr-btn" id="save-btn" title="Guardar tablero como archivo local">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>Guardar</span>
+      </button>
+      <button class="hdr-btn" id="load-btn" title="Cargar tablero desde archivo local">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Cargar</span>
+      </button>
+      <input type="file" id="load-file-input" accept=".gmt,.json" style="display:none;"/>
+      <button class="hdr-btn" id="fs-btn">
+        <svg id="fs-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+      <button class="hdr-btn accent" id="share-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>Compartir</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="board-status" style="display:none;" data-type="loading">
+    <div class="status-spin"></div>
+    <span class="status-msg">Conectando...</span>
+  </div>
+
+  <div id="board-main" class="bg-editorial">
+    <div id="board-content">
+      <div id="cards-container" class="cards-grid"></div>
     </div>
   </div>
 
+  <button id="fab">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>Añadir Nota</span>
+  </button>
+</div>
 
+<!-- SYNC PILL -->
+<div id="sync-pill"><span class="sdot"></span><span id="sync-msg">Sincronizado</span></div>
 
-
-  <!-- ════════════════ ACTIVE TABLERO BOARD ════════════════ -->
-  <div id="board" class="hidden h-screen w-full flex flex-col overflow-hidden relative">
-    
-    <!-- Top Nav Toolbar Header -->
-    <header class="px-3.5 py-2 border-b border-neutral-200 bg-white/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-50 select-none shadow-xs">
-      
-      <!-- Header Left Block -->
-      <div class="flex items-center gap-2.5 min-w-0">
-        <button
-          onclick="exitToLobby()"
-          class="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-900 transition-colors"
-          title="Salir al lobby"
-        >
-          <i data-lucide="chevron-left" class="w-5 h-5"></i>
-        </button>
-
-        <!-- Dynamic logo inside app header -->
-        <div class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center border border-black/10 shrink-0">
-          <svg viewBox="0 0 80 80" class="w-[84%] h-[84%]" fill="none">
-            <rect x="10" y="14" width="60" height="42" rx="4" fill="#faf7f2" />
-            <rect x="10" y="14" width="60" height="8" rx="2" fill="#c8541a" />
-            <rect x="14" y="26" width="24" height="15" rx="3" fill="#ea580c" opacity=".9" />
-          </svg>
+<!-- POST MODAL -->
+<div id="post-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span id="post-modal-title">Nueva Nota</span></h3>
+      <button class="modal-close" id="post-modal-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <form id="post-form">
+        <div class="form-group form-row">
+          <div><label>Tu nombre</label><input type="text" id="pf-username" maxlength="40" placeholder="Ej. Delfín Creativo"/></div>
+          <div><label>Título</label><input type="text" id="pf-title" maxlength="100" placeholder="Opcional"/></div>
         </div>
-
-        <div class="min-w-0">
-          <h2 id="hdr-board-title" class="font-serif font-bold text-sm leading-tight truncate text-neutral-900">
-            Cargando tablero...
-          </h2>
-          <div class="flex items-center gap-2 mt-0.5">
-            <span id="hdr-board-code" class="font-mono text-[9px] uppercase tracking-widest text-ink font-semibold bg-orange-100 px-1 py-0.2 rounded-xs select-all">
-              ------
-            </span>
-            <span id="hdr-badge" class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm select-none border">
-              Cargando
-            </span>
-          </div>
+        <div class="form-group">
+          <label>Mensaje</label>
+          <textarea id="pf-content" rows="4" maxlength="1200" placeholder="Escribe tu idea..."></textarea>
+          <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;opacity:.4;margin-top:3px;"><span>* Si no hay imagen</span><span id="content-counter">0/1200</span></div>
         </div>
-      </div>
-
-      <!-- Header Right Block -->
-      <div class="flex items-center gap-2 shrink-0">
-        <!-- Peer Connection Indicator bubble status -->
-        <div class="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-lg border bg-neutral-50 border-neutral-200" id="peer-status-panel">
-          <div id="peer-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
-          <div class="text-left leading-none">
-            <div id="peer-status-text" class="text-[10px] font-bold uppercase tracking-wider text-neutral-700">Iniciando...</div>
-            <div id="peer-status-sub" class="text-[8px] text-neutral-400 mt-0.5 font-mono">0 pares conectados</div>
-          </div>
-        </div>
-
-        <!-- Nickname prompt clicker display -->
-        <button
-          onclick="openNicknamePrompt()"
-          class="px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-750 hover:text-neutral-900 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-all text-ellipsis"
-        >
-          <i data-lucide="user" class="w-3.5 h-3.5 text-neutral-500 shrink-0"></i>
-          <span id="hdr-nick-text" class="max-w-[70px] md:max-w-[120px] truncate">Anónimo</span>
-        </button>
-
-        <!-- Layout Selector: Mosaico vs CanvasLibre -->
-        <div class="flex items-center border border-neutral-200 rounded-lg p-0.5 bg-neutral-50 shrink-0">
-          <button
-            onclick="switchLayout('grid')"
-            id="layout-grid-btn"
-            class="p-1.5 rounded-md hover:text-neutral-900 transition-colors text-neutral-400 bg-white"
-            title="Diseño en mosaico (automático)"
-          >
-            <i data-lucide="layout-grid" class="w-4 h-4"></i>
-          </button>
-          <button
-            onclick="switchLayout('canvas')"
-            id="layout-canvas-btn"
-            class="p-1.5 rounded-md hover:text-neutral-900 transition-colors text-neutral-400"
-            title="Diseño libre (arrastrable)"
-          >
-            <i data-lucide="map" class="w-4 h-4"></i>
-          </button>
-        </div>
-
-        <!-- Background Settings option -->
-        <div class="relative shrink-0">
-          <button
-            onclick="toggleSettingsMenu(event)"
-            class="p-2 rounded-lg border border-neutral-200 hover:border-black text-neutral-500 hover:text-ink transition-all bg-white"
-            title="Fondo y Ajustes"
-          >
-            <i data-lucide="settings" class="w-4 h-4"></i>
-          </button>
-
-          <!-- Settings Dropdown panel -->
-          <div id="settings-menu" class="hidden absolute right-0 top-full mt-2 w-52 bg-[#faf7f2] border border-neutral-200 shadow-2xl rounded-lg p-1 animate-in fade-in slide-in-from-top-1.5 duration-100">
-            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-widest px-3 py-1.5 border-b border-neutral-100 select-none">
-              Wallpaper del tablero
-            </div>
-            <div class="py-1" id="settings-theme-list">
-              <!-- Render theme modifiers inside dynamically -->
-            </div>
-            <div id="reclaim-control-panel" class="border-t border-neutral-100 mt-1 pt-1">
-              <button
-                onclick="reclaimControlAsHost()"
-                class="w-full text-left px-3 py-2 text-[10px] text-orange-650 hover:bg-orange-50 rounded-md font-bold uppercase tracking-wider flex items-center gap-1.5"
-              >
-                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reclamar Control
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- PDF Export Button -->
-        <button
-          onclick="exportBoardToPdf()"
-          class="p-2 rounded-lg border border-neutral-200 text-neutral-500 hover:text-ink hover:border-neutral-800 transition-all bg-white shrink-0"
-          title="Exportar a PDF"
-        >
-          <i data-lucide="file-down" class="w-4 h-4"></i>
-        </button>
-
-        <!-- Fullscreen Button -->
-        <button
-          onclick="toggleScreenMode()"
-          class="p-2 rounded-lg border border-neutral-200 text-neutral-500 hover:text-ink hover:border-neutral-800 transition-all bg-white shrink-0"
-          title="Alternar pantalla completa"
-        >
-          <i id="fs-icon" data-lucide="maximize-2" class="w-4 h-4"></i>
-        </button>
-
-        <!-- Share Board button picker -->
-        <button
-          onclick="openShareDialog()"
-          class="px-3.5 py-1.5 bg-[#1a1512] hover:bg-brand text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-colors shrink-0"
-        >
-          <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Compartir
-        </button>
-      </div>
-    </header>
-
-
-
-    <!-- ═════════ MASTER CANVAS WORKSPACE WHITEBOARD ═════════ -->
-    <main id="board-main" class="flex-1 overflow-auto position-relative bg-editorial">
-      <div id="board-content" class="min-h-full p-6 sm:p-10 relative">
-        
-        <!-- Large Transparent elegant watermark -->
-        <div id="whiteboard-watermark" class="screensaver-watermark pointer-events-none select-none font-serif font-bold italic text-base sm:text-2xl z-0">
-          Tablero temporal de 24h de @GmedranoTIC
-        </div>
-
-        <!-- Notes grid layout / freeform canvas container -->
-        <div id="notes-viewport" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 relative select-none">
-          <!-- Dynamically populated boards card render inside -->
-        </div>
-
-      </div>
-    </main>
-
-    <!-- FAB: Create new note button -->
-    <button
-      id="board-fab"
-      onclick="openNoteEditor()"
-      class="hidden fixed bottom-6 right-6 px-4 py-3.5 bg-ink hover:bg-brand text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-2xl items-center gap-2 select-none z-40 hover:scale-105 active:scale-95 transition-all"
-    >
-      <i data-lucide="plus" class="w-4.5 h-4.5"></i>
-      Añadir Nota temporal
-    </button>
-  </div>
-
-
-
-
-  <!-- ════════════════ POPUP MODALS ════════════════ -->
-
-  <!-- Modal 1: Note Editor Form -->
-  <div id="note-modal" class="hidden fixed inset-0 z-200 bg-ink/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-[#faf7f2] border border-neutral-200 w-full max-w-lg shadow-2xl rounded-lg overflow-hidden flex flex-col max-h-[92vh]">
-      <!-- Header -->
-      <div class="px-5 py-4 border-b border-neutral-200 flex items-center justify-between bg-[#faf7f2] shrink-0">
-        <h3 id="note-modal-headline" class="font-serif font-bold text-lg flex items-center gap-2">
-          <i data-lucide="sparkles" class="w-5 h-5 text-brand"></i> Nueva nota temporal
-        </h3>
-        <button onclick="closeNoteEditor()" class="p-1 text-neutral-400 hover:text-neutral-900 transition-colors">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Form Body scrollbox -->
-      <form id="note-editor-form" class="flex-1 overflow-y-auto p-5 space-y-4" onsubmit="saveNoteMutation(event)">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Autor / Apodo</label>
-            <input
-              type="text"
-              id="note-author-input"
-              required
-              maxlength="20"
-              placeholder="Ej. Búho Visual"
-              class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs outline-hidden focus:border-ink transition-colors text-neutral-800"
-            />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Título de la nota (Opcional)</label>
-            <input
-              type="text"
-              id="note-title-input"
-              maxlength="40"
-              placeholder="Ej. Propuesta de diseño"
-              class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs outline-hidden focus:border-ink transition-colors text-neutral-800"
-            />
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Mensaje</label>
-          <textarea
-            id="note-message-input"
-            maxlength="1000"
-            rows="4"
-            placeholder="Introduce textos o pega anotaciones de clase aquí..."
-            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs outline-hidden focus:border-ink transition-colors resize-none text-neutral-800"
-          ></textarea>
-          <div class="flex justify-between items-center text-[9px] font-mono opacity-50 mt-1">
-            <span>* Se requiere texto de mensaje o subir imagen</span>
-            <span id="note-char-counter">0/1000</span>
-          </div>
-        </div>
-
-        <!-- Color board selector -->
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Color de fondo</label>
-          <div class="flex flex-wrap gap-2" id="note-color-picker">
-            <!-- Populated color options dynamically -->
-          </div>
-        </div>
-
-        <!-- Image file upload input -->
-        <div class="flex flex-col gap-1">
-          <label class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Cargar imagen (Opcional)</label>
-          
-          <div id="image-upload-wrapper" class="w-full">
-            <!-- Will render drag area or image preview dynamically -->
-          </div>
-        </div>
-
-        <!-- Action triggers row -->
-        <div class="pt-3 border-t border-neutral-200 flex justify-end gap-2 shrink-0">
-          <button
-            type="button"
-            onclick="closeNoteEditor()"
-            class="px-4 py-2 border border-neutral-300 hover:border-neutral-900 rounded-md text-xs font-bold uppercase tracking-wider text-neutral-700 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            id="note-submit-btn"
-            class="px-4 py-2 bg-ink hover:bg-brand text-white rounded-md text-xs font-bold uppercase tracking-wider transition hover:shadow-md"
-          >
-            Publicar nota
-          </button>
+        <div class="form-group"><label>Color</label><div class="color-picker" id="color-picker"></div></div>
+        <div class="form-group"><label>Imagen (opcional)</label><div id="drop-zone-wrap"></div></div>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" id="post-cancel">Cancelar</button>
+          <button type="submit" class="btn-save"><span id="post-btn-label">Publicar</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
         </div>
       </form>
     </div>
   </div>
+</div>
 
-
-  <!-- Modal 2: Dynamic QR Share Dialog -->
-  <div id="share-modal" class="hidden fixed inset-0 z-200 bg-ink/40 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-[#faf7f2] border border-neutral-200 w-full max-w-md shadow-2xl rounded-lg overflow-hidden flex flex-col">
-      <!-- Header -->
-      <div class="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
-        <h3 class="font-serif font-bold text-lg flex items-center gap-2">
-          Compartir pizarra
-        </h3>
-        <button onclick="closeShareDialog()" class="p-1 text-neutral-400 hover:text-neutral-900 transition-colors">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Tab selectors selector viewer vs code editor links -->
-      <div class="grid grid-cols-2 border-b border-neutral-200">
-        <button
-          onclick="switchShareModalTab('viewer')"
-          id="share-tab-viewer-btn"
-          class="py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 border-ink text-ink"
-        >
-          <i data-lucide="eye" class="w-4 h-4"></i> Solo lectura
-        </button>
-        <button
-          onclick="switchShareModalTab('editor')"
-          id="share-tab-editor-btn"
-          class="py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-600"
-        >
-          <i data-lucide="edit-3" class="w-4 h-4"></i> Editor completo
-        </button>
-      </div>
-
-      <!-- Content -->
-      <div class="p-5 space-y-4">
-        <!-- Giant numeric alphanumeric code -->
-        <div class="bg-neutral-100 border border-neutral-200 rounded-lg p-4 text-center select-all">
-          <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-0.5">Código de ingreso</span>
-          <span id="share-modal-codebadge" class="font-mono font-bold text-3xl text-ink tracking-widest">------</span>
-          <span class="text-[11px] text-neutral-400 block mt-1.5">Introduce este código en la ventana de inicio para sincronizar.</span>
-        </div>
-
-        <!-- Dynamic QR container -->
-        <div class="bg-white border border-neutral-200 p-4 rounded-lg flex flex-col items-center justify-center gap-2">
-          <div class="w-[140px] h-[140px] bg-neutral-50 flex items-center justify-center border border-neutral-100 rounded-md">
-            <img id="share-qr-img" src="" alt="Código QR Colaborativo" class="w-full h-full object-contain" referrerPolicy="no-referrer">
-          </div>
-          <span class="text-[10px] font-mono tracking-wider font-semibold uppercase text-neutral-400 flex items-center gap-1.5">
-            <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Escanear para unirse
-          </span>
-        </div>
-
-        <!-- Informative warn banner -->
-        <div id="share-warn-banner" class="p-3 border rounded-lg flex items-start gap-2 text-xs bg-emerald-50 border-emerald-200 text-emerald-850">
-          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5 text-emerald-600"></i>
-          <span id="share-warn-text">
-            Los visitantes con este enlace podrán ver notas, comentarios y dar 'me gustas' en tiempo real, pero no realizar modificaciones estructurales.
-          </span>
-        </div>
-
-        <!-- Copyable text link block -->
-        <div class="flex flex-col gap-1.5">
-          <label id="share-link-label" class="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Enlace de lectura</label>
-          <div class="flex gap-2">
-            <input
-              type="text"
-              id="share-link-input"
-              readonly
-              class="flex-1 rounded-md border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs font-mono select-all outline-hidden text-neutral-600 truncate"
-            />
-            <button
-              onclick="copyShareLink()"
-              id="share-copy-btn"
-              class="px-4 py-2 bg-ink hover:bg-brand text-white text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1.5"
-            >
-              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar
-            </button>
-          </div>
-        </div>
-      </div>
+<!-- SHARE MODAL -->
+<div id="share-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Compartir tablero</h3>
+      <button class="modal-close" id="share-modal-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
+    <div class="share-tabs">
+      <button class="share-tab active" id="tab-viewer" onclick="setShareTab('viewer')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Solo lectura</button>
+      <button class="share-tab" id="tab-editor" onclick="setShareTab('editor')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Editor</button>
+    </div>
+    <div class="modal-body" id="share-modal-body"></div>
   </div>
+</div>
 
+<!-- ZOOM -->
+<div id="zoom-overlay" onclick="closeZoom()">
+  <button id="zoom-close" onclick="closeZoom()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <img id="zoom-img" src="" alt=""/>
+</div>
+<div id="pdf-loading"><div class="spin"></div><p>Generando PDF...</p></div>
 
-  <!-- Modal 3: Set Nickname Prompt -->
-  <div id="nickname-modal" class="hidden fixed inset-0 z-200 bg-ink/40 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-[#faf7f2] border border-neutral-200 w-full max-w-xs shadow-2xl rounded-lg p-5">
-      <h3 class="font-serif font-bold text-base mb-1.5 flex items-center gap-2">
-        <i data-lucide="user" class="w-4 h-4 text-brand"></i> Cambiar mi nombre
-      </h3>
-      <p class="text-xs text-neutral-400 mb-4">Introduce un apodo identificador con el que firmarás tus aportes en la pizarra.</p>
-      
-      <form onsubmit="saveNicknameMutation(event)" class="space-y-4">
-        <input
-          type="text"
-          id="nickname-modal-input"
-          required
-          maxLength="20"
-          placeholder="Ej. Zorro Tecnológico"
-          class="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs outline-hidden focus:border-brand text-ink"
-        />
-        
-        <div class="flex justify-end gap-1.5">
-          <button
-            type="button"
-            onclick="closeNicknamePrompt()"
-            class="px-3.5 py-1.5 border border-neutral-300 hover:border-neutral-900 rounded-md text-[10px] font-bold uppercase tracking-wider text-neutral-700"
-          >
-            Cerrar
-          </button>
-          <button
-            type="submit"
-            class="px-3.5 py-1.5 bg-ink hover:bg-brand text-white rounded-md text-[10px] font-bold uppercase tracking-wider"
-          >
-            Guardar
-          </button>
-        </div>
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+const GUN_PEERS = [
+  'https://gun-manhattan.herokuapp.com/gun',
+  'https://peer.wallie.io/gun',
+  'https://gundb-relay-millie.glitch.me/gun'
+];
+
+const THEMES = [
+  {id:'editorial', name:'Editorial 🪶',  bg:'bg-editorial'},
+  {id:'minimalist',name:'Técnico 📐',    bg:'bg-minimalist'},
+  {id:'sunset',    name:'Atardecer 🌅',  bg:'bg-sunset'},
+  {id:'sage',      name:'Olivo 🌿',      bg:'bg-sage'},
+  {id:'cyber',     name:'Cyber 🌌',      bg:'bg-cyber'},
+];
+const COLORS = [
+  {name:'Blanco', bg:'#ffffff', border:'#e8e2d5', text:'#1a1512'},
+  {name:'Naranja',bg:'#f27d26', border:'#d4691a', text:'#ffffff'},
+  {name:'Crema',  bg:'#fdfbf7', border:'#e8e2d5', text:'#2c2924'},
+  {name:'Azul',   bg:'#dbeafe', border:'#93c5fd', text:'#1e3a5f'},
+  {name:'Verde',  bg:'#dcfce7', border:'#86efac', text:'#14532d'},
+  {name:'Dorado', bg:'#d4a843', border:'#b8922a', text:'#ffffff'},
+  {name:'Oscuro', bg:'#1a1512', border:'#3d3630', text:'#faf7f2'},
+  {name:'Lila',   bg:'#ede9fe', border:'#c4b5fd', text:'#3b0764'},
+];
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let gun, boardGun, cardsGun;
+let boardCode = null, isEditor = false, editKey = null;
+let board = null, cards = {};
+let layoutMode = 'grid', editingCardId = null;
+let selectedColor = COLORS[0], currentImageBase64 = null;
+let highestZ = 10, _shareTab = 'viewer';
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function makeCode() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6}, () => c[Math.floor(Math.random()*c.length)]).join('');
+}
+function makeKey() { return 'ek' + uid() + uid(); }
+function esc(s='') { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function fmt(s='') { return s.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6); }
+function getRem(createdAt) {
+  const diff = new Date(createdAt).getTime() + EXPIRY_MS - Date.now();
+  if(diff <= 0) return {expired:true, text:'Expirado'};
+  const h=Math.floor(diff/3600000), m=Math.floor((diff%3600000)/60000);
+  return {expired:false, text: h>0 ? `${h}h ${m}m` : `${m}m`};
+}
+function qrUrl(url, s=180) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${s}x${s}&data=${encodeURIComponent(url)}`;
+}
+async function compressImg(file, maxW=720, maxH=720, q=0.73) {
+  return new Promise((res,rej) => {
+    const r = new FileReader(); r.readAsDataURL(file);
+    r.onload = e => {
+      const img = new Image(); img.src = e.target.result;
+      img.onload = () => {
+        let w=img.width, h=img.height;
+        if(w>h) { if(w>maxW){h=Math.round(h*maxW/w);w=maxW;} }
+        else     { if(h>maxH){w=Math.round(w*maxH/h);h=maxH;} }
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        res(c.toDataURL('image/jpeg',q));
+      };
+      img.onerror=rej;
+    };
+    r.onerror=rej;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SYNC PILL
+// ═══════════════════════════════════════════════════════════
+let syncTimer = null;
+function showSync(msg='Sincronizado') {
+  const p=document.getElementById('sync-pill');
+  const m=document.getElementById('sync-msg');
+  if(!p||!m) return;
+  m.textContent=msg; p.classList.add('visible');
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>p.classList.remove('visible'),2200);
+}
+
+// ═══════════════════════════════════════════════════════════
+// GUN INIT
+// ═══════════════════════════════════════════════════════════
+function initGun() {
+  gun = Gun({ peers: GUN_PEERS, localStorage: true });
+}
+
+// ═══════════════════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════════════════
+function init() {
+  initGun();
+  const p = new URLSearchParams(location.search);
+  const code = p.get('code'), role = p.get('role'), k = p.get('key');
+  if(!code) { showLobby(); return; }
+  boardCode = fmt(code);
+  if(boardCode.length !== 6) { showLobby(); return; }
+  const myKeys = JSON.parse(localStorage.getItem('my_keys')||'{}');
+  editKey  = k || myKeys[boardCode] || null;
+  isEditor = !!(role === 'editor' && editKey);
+  openBoard();
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOBBY
+// ═══════════════════════════════════════════════════════════
+function showLobby() {
+  document.getElementById('lobby').style.display = 'flex';
+  document.getElementById('app').style.display   = 'none';
+  buildThemeGrid(); buildRecents();
+}
+
+function buildThemeGrid() {
+  const g = document.getElementById('theme-grid'); if(!g) return;
+  let sel = 'editorial'; g.innerHTML = '';
+  THEMES.forEach(t => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'theme-btn' + (t.id===sel?' active':''); b.dataset.id = t.id;
+    b.innerHTML = `<div class="${t.bg}" style="position:absolute;inset:0;opacity:.82;"></div><span class="theme-label">${t.name}</span>`;
+    b.onclick = () => { g.querySelectorAll('.theme-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); sel=t.id; };
+    g.appendChild(b);
+  });
+  g._getSel = () => sel;
+}
+
+function buildRecents() {
+  const el = document.getElementById('recents-list'); if(!el) return;
+  const all  = JSON.parse(localStorage.getItem('recent_boards')||'[]');
+  const keys = JSON.parse(localStorage.getItem('my_keys')||'{}');
+  const valid = all.filter(r => !getRem(r.createdAt).expired);
+  if(!valid.length) { el.innerHTML='<p class="empty-recents">Sin tableros recientes.</p>'; return; }
+  el.innerHTML = valid.map(b => `
+    <div class="recent-item" onclick="openRecent('${b.code}')">
+      <div><div class="rname">${esc(b.title)}</div><div class="rcode">Código: <strong>${b.code}</strong> · Expira: ${getRem(b.createdAt).text}</div></div>
+      <div class="rbadge ${keys[b.code]?'edit':'view'}">${keys[b.code]?'EDITOR':'VER'}</div>
+    </div>`).join('');
+}
+
+window.openRecent = function(code) {
+  const keys = JSON.parse(localStorage.getItem('my_keys')||'{}');
+  const k = keys[code];
+  const u = new URL(location.href);
+  u.searchParams.set('code', code);
+  if(k) { u.searchParams.set('key',k); u.searchParams.set('role','editor'); }
+  else   { u.searchParams.set('role','viewer'); }
+  location.href = u.toString();
+};
+
+function saveRecent(b) {
+  let r = JSON.parse(localStorage.getItem('recent_boards')||'[]');
+  r = [{code:b.code,title:b.title,createdAt:b.createdAt},...r.filter(x=>x.code!==b.code)].slice(0,10);
+  localStorage.setItem('recent_boards', JSON.stringify(r));
+}
+
+document.getElementById('create-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const title     = document.getElementById('cf-title').value.trim() || 'Mi Tablero';
+  const desc      = document.getElementById('cf-desc').value.trim()  || 'Tablero @GmedranoTIC';
+  const wallpaper = document.getElementById('theme-grid')?._getSel() || 'editorial';
+  const code = makeCode(), ek = makeKey();
+  const b = { code, title, desc, wallpaper, editKey:ek, createdAt:new Date().toISOString() };
+  const keys = JSON.parse(localStorage.getItem('my_keys')||'{}'); keys[code]=ek;
+  localStorage.setItem('my_keys', JSON.stringify(keys));
+  saveRecent(b);
+  gun.get('gmt_boards').get(code).put(b);
+  const u = new URL(location.href);
+  u.searchParams.set('code',code); u.searchParams.set('key',ek); u.searchParams.set('role','editor');
+  location.href = u.toString();
+});
+
+document.getElementById('join-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const code = fmt(document.getElementById('jf-code').value);
+  if(code.length !== 6) { alert('El código debe tener 6 caracteres.'); return; }
+  const u = new URL(location.href);
+  u.searchParams.set('code',code); u.searchParams.set('role','viewer');
+  location.href = u.toString();
+});
+
+document.getElementById('jf-code')?.addEventListener('input', function() {
+  this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+
+// ═══════════════════════════════════════════════════════════
+// BOARD
+// ═══════════════════════════════════════════════════════════
+function openBoard() {
+  document.getElementById('lobby').style.display = 'none';
+  const appEl = document.getElementById('app'); appEl.style.display = 'flex';
+  setStatus('loading', 'Conectando al tablero ' + boardCode + '…');
+
+  boardGun = gun.get('gmt_boards').get(boardCode);
+  cardsGun = gun.get('gmt_cards').get(boardCode);
+
+  boardGun.once(data => {
+    if(!data) {
+      if(isEditor) {
+        board = {code:boardCode, title:'Tablero @GmedranoTIC', desc:'', wallpaper:'editorial', editKey:editKey, createdAt:new Date().toISOString()};
+        boardGun.put(board);
+      } else {
+        setStatus('error', 'Tablero no encontrado o expirado. Pide al creador el enlace de editor.');
+        return;
+      }
+    } else {
+      board = data;
+      if(isEditor && board.editKey && board.editKey !== editKey) {
+        isEditor = false; editKey = null;
+        const u = new URL(location.href); u.searchParams.delete('key'); u.searchParams.set('role','viewer');
+        history.replaceState({}, '', u.toString());
+      }
+    }
+    const myKeys = JSON.parse(localStorage.getItem('my_keys')||'{}');
+    if(isEditor && editKey) { myKeys[boardCode]=editKey; localStorage.setItem('my_keys',JSON.stringify(myKeys)); }
+    saveRecent(board);
+    setStatus('ok');
+    renderHeader(); renderBg();
+    if(isEditor) { document.getElementById('fab').style.display='flex'; document.getElementById('theme-picker-wrap').style.display=''; buildThemeList(); }
+  });
+
+  boardGun.on(data => {
+    if(!data) return;
+    board = data; renderHeader(); renderBg(); buildThemeList();
+    showSync('Tablero actualizado');
+  });
+
+  cardsGun.map().on((data, cardId) => {
+    if(!data || data._) {
+      if(data === null && cards[cardId]) { delete cards[cardId]; renderCards(); }
+      return;
+    }
+    if(cardId === '_') return;
+    if(new Date(data.createdAt).getTime() + EXPIRY_MS <= Date.now()) {
+      cardsGun.get(cardId).put(null);
+      delete cards[cardId]; renderCards(); return;
+    }
+    if(typeof data.color === 'string') {
+      try { data.color = JSON.parse(data.color); } catch(e) { data.color = COLORS[0]; }
+    }
+    if(typeof data.comments === 'string') {
+      try { data.comments = JSON.parse(data.comments); } catch(e) { data.comments = {}; }
+    }
+    const isNew = !cards[cardId];
+    cards[cardId] = data;
+    renderCards();
+    if(isNew) showSync('Nueva nota recibida');
+  });
+
+  setInterval(() => { pruneExpired(); renderHeader(); }, 60000);
+}
+
+function setStatus(type, msg='') {
+  const el = document.getElementById('board-status'); if(!el) return;
+  el.style.display = type==='ok' ? 'none' : 'flex';
+  el.dataset.type  = type;
+  el.querySelector('.status-msg').textContent = msg;
+}
+
+function pruneExpired() {
+  const now = Date.now();
+  Object.keys(cards).forEach(id => {
+    if(new Date(cards[id].createdAt).getTime() + EXPIRY_MS <= now) {
+      cardsGun.get(id).put(null);
+      delete cards[id];
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// HEADER & BG
+// ═══════════════════════════════════════════════════════════
+function renderHeader() {
+  if(!board) return;
+  document.getElementById('hdr-board-title').textContent = board.title || 'Tablero';
+  document.getElementById('hdr-board-code').textContent  = 'Código: ' + boardCode;
+  const b = document.getElementById('hdr-badge');
+  b.textContent = isEditor ? '✍️ Editor' : '👁 Lectura';
+  b.className   = 'hdr-badge ' + (isEditor ? 'editor' : 'viewer');
+  const {text} = getRem(board.createdAt);
+  const el = document.getElementById('expiry-text'); if(el) el.textContent = 'Expira: ' + text;
+}
+function renderBg() {
+  if(!board) return;
+  const m = document.getElementById('board-main');
+  THEMES.forEach(t => m.classList.remove(t.bg));
+  m.classList.add((THEMES.find(x=>x.id===board.wallpaper)||THEMES[0]).bg);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARDS RENDER
+// ═══════════════════════════════════════════════════════════
+function renderCards() {
+  const con = document.getElementById('cards-container');
+  con.className = layoutMode==='grid' ? 'cards-grid' : 'cards-canvas';
+  const list = Object.values(cards)
+    .filter(c => !getRem(c.createdAt).expired)
+    .sort((a,b) => new Date(a.createdAt)-new Date(b.createdAt));
+
+  if(!list.length) {
+    con.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <h3>Tablero vacío</h3>
+      <p>${isEditor?'Añade la primera nota. Comparte el código <strong>'+boardCode+'</strong> con tu equipo.':'Aún sin contenido. Pide al editor que añada notas.'}</p>
+      ${isEditor?'<button onclick="openPost()">+ Primera nota</button>':''}
+    </div>`; return;
+  }
+
+  const existingIds = new Set([...con.querySelectorAll('[data-card-id]')].map(e=>e.dataset.cardId));
+  const currentIds  = new Set(list.map(c=>c.id));
+  existingIds.forEach(id => { if(!currentIds.has(id)) con.querySelector(`[data-card-id="${id}"]`)?.remove(); });
+  list.forEach(card => {
+    const existing = con.querySelector(`[data-card-id="${card.id}"]`);
+    if(existing) {
+      const tt = existing.querySelector('.card-timer-text'); if(tt) tt.textContent = '-'+getRem(card.createdAt).text;
+      const lk = existing.querySelector('.like-count');      if(lk) lk.textContent = card.likes||0;
+      const cc = existing.querySelector('.comment-count');
+      if(cc) cc.textContent = Object.keys(card.comments||{}).length;
+    } else {
+      con.appendChild(mkCard(card));
+    }
+  });
+}
+
+function mkCard(card) {
+  const {text:tt} = getRem(card.createdAt);
+  const c  = card.color || COLORS[0];
+  const bg = c.bg||'#fff', bd=c.border||'#eee', tx=c.text||'#111';
+  const coms = Object.values(card.comments||{});
+
+  const el = document.createElement('div');
+  el.className   = 'post-card card-enter' + (layoutMode==='canvas'?' canvas-mode':'');
+  el.dataset.cardId = card.id;
+  el.style.cssText  = `background:${bg};border-color:${bd};color:${tx};`;
+  if(layoutMode==='canvas') { el.style.left=(card.x||10)+'%'; el.style.top=(card.y||10)+'%'; el.style.zIndex=card.zIndex||10; }
+
+  el.innerHTML = `
+    <div class="card-top">
+      <span class="card-author">✍️ ${esc(card.username||'Anónimo')}</span>
+      <span class="card-timer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="card-timer-text">-${tt}</span>
+      </span>
+    </div>
+    ${card.imageUrl ? `<div class="card-image" onclick="openZoom('${card.id}')"><img src="${card.imageUrl}" loading="lazy" alt=""/><span class="zoom-hint">🔍 Ampliar</span></div>` : ''}
+    <div class="card-body">
+      ${card.title   ? `<div class="card-title">${esc(card.title)}</div>` : ''}
+      ${card.content ? `<div class="card-text">${esc(card.content)}</div>` : ''}
+    </div>
+    <div class="card-footer">
+      <div class="card-actions">
+        <button class="card-btn" onclick="doLike('${card.id}',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span class="like-count">${card.likes||0}</span>
+        </button>
+        <button class="card-btn" onclick="toggleCom('${card.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="comment-count">${coms.length}</span>
+        </button>
+      </div>
+      ${isEditor ? `<div class="card-editor-btns">
+        <button class="card-editor-btn" onclick="editCard('${card.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="card-editor-btn del" onclick="delCard('${card.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+      </div>` : ''}
+    </div>
+    <div class="comments-panel" id="cp-${card.id}" style="display:none;">
+      <div class="comments-list" id="cl-${card.id}">
+        ${coms.length ? coms.map(cm=>`
+          <div class="comment-item">
+            <div class="comment-meta"><span>${esc(cm.username)}</span><span>${new Date(cm.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>
+            <div class="comment-text">${esc(cm.content)}</div>
+          </div>`).join('') : '<p class="no-comments">Sin comentarios.</p>'}
+      </div>
+      <form class="comment-form" onsubmit="addComment(event,'${card.id}')">
+        <input type="text" placeholder="Tu comentario..." maxlength="300" required/>
+        <button class="comment-submit" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
       </form>
+    </div>`;
+
+  if(layoutMode==='canvas' && isEditor) attachDrag(el, card.id);
+  return el;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARD ACTIONS
+// ═══════════════════════════════════════════════════════════
+window.doLike = function(id, btn) {
+  const card = cards[id]; if(!card) return;
+  card.likes = (card.likes||0)+1;
+  btn.querySelector('.like-count').textContent = card.likes;
+  btn.querySelector('svg').setAttribute('fill','currentColor');
+  cardsGun.get(id).get('likes').put(card.likes);
+};
+
+window.toggleCom = function(id) {
+  const p = document.getElementById(`cp-${id}`);
+  p.style.display = p.style.display==='none' ? 'block' : 'none';
+};
+
+window.addComment = function(e, id) {
+  e.preventDefault();
+  const inp  = e.target.querySelector('input'), txt=inp.value.trim(); if(!txt) return;
+  const card = cards[id]; if(!card) return;
+  const nick = localStorage.getItem('board_nick')||'Colaborador';
+  const cm   = {id:uid(), username:nick, content:txt, createdAt:new Date().toISOString()};
+  if(!card.comments) card.comments={};
+  card.comments[cm.id] = cm;
+  const commentsStr = JSON.stringify(card.comments);
+  cardsGun.get(id).get('comments').put(commentsStr);
+  const list = document.getElementById(`cl-${id}`);
+  list.querySelector('.no-comments')?.remove();
+  const item = document.createElement('div'); item.className='comment-item';
+  item.innerHTML=`<div class="comment-meta"><span>${esc(nick)}</span><span>${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="comment-text">${esc(txt)}</div>`;
+  list.appendChild(item); list.scrollTop=list.scrollHeight;
+  const cc = document.querySelector(`[data-card-id="${id}"] .comment-count`); if(cc) cc.textContent=Object.keys(card.comments).length;
+  inp.value='';
+};
+
+window.delCard = function(id) {
+  if(!confirm('¿Eliminar esta nota?')) return;
+  cardsGun.get(id).put(null);
+  delete cards[id];
+  document.querySelector(`[data-card-id="${id}"]`)?.remove();
+  if(!Object.keys(cards).length) renderCards();
+};
+
+window.editCard = function(id) { editingCardId=id; openPost(cards[id]); };
+window.openZoom = function(id) { const c=cards[id]; if(!c?.imageUrl) return; document.getElementById('zoom-img').src=c.imageUrl; document.getElementById('zoom-overlay').style.display='flex'; };
+window.closeZoom = function() { document.getElementById('zoom-overlay').style.display='none'; };
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeZoom(); });
+
+// ═══════════════════════════════════════════════════════════
+// DRAG
+// ═══════════════════════════════════════════════════════════
+function attachDrag(el, id) {
+  let drag=false, ox=0, oy=0;
+  el.addEventListener('pointerdown', e => {
+    if(e.target.closest('button,input,textarea')) return;
+    drag=true; el.classList.add('dragging');
+    const r=el.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top;
+    el.setPointerCapture(e.pointerId); highestZ++; el.style.zIndex=highestZ; e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => {
+    if(!drag) return;
+    const p=el.parentElement.getBoundingClientRect();
+    const wp=(el.offsetWidth/p.width)*100, hp=(el.offsetHeight/p.height)*100;
+    let x=((e.clientX-p.left-ox)/p.width)*100, y=((e.clientY-p.top-oy)/p.height)*100;
+    x=Math.max(0,Math.min(100-wp,x)); y=Math.max(0,Math.min(95-hp,y));
+    el.style.left=x+'%'; el.style.top=y+'%';
+  });
+  el.addEventListener('pointerup', e => {
+    if(!drag) return; drag=false; el.classList.remove('dragging');
+    const x=parseFloat(el.style.left)||0, y=parseFloat(el.style.top)||0;
+    cardsGun.get(id).put({x, y, zIndex:highestZ});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// LAYOUT
+// ═══════════════════════════════════════════════════════════
+window.setLayout = function(mode) {
+  layoutMode=mode;
+  document.getElementById('layout-grid').classList.toggle('active',mode==='grid');
+  document.getElementById('layout-canvas').classList.toggle('active',mode==='canvas');
+  renderCards();
+};
+
+// ═══════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════
+function buildThemeList() {
+  const list=document.getElementById('theme-list'); if(!list||!board) return;
+  list.innerHTML=THEMES.map(t=>`<button class="theme-list-btn" onclick="changeTheme('${t.id}')">
+    <span style="font-weight:${board.wallpaper===t.id?700:400};">${t.name}</span>
+    ${board.wallpaper===t.id?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+  </button>`).join('');
+}
+window.changeTheme = function(id) {
+  board.wallpaper=id; renderBg(); buildThemeList();
+  document.getElementById('theme-dropdown').style.display='none';
+  boardGun.get('wallpaper').put(id);
+};
+document.getElementById('theme-picker-btn')?.addEventListener('click', () => {
+  const dd=document.getElementById('theme-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+});
+document.addEventListener('click', e => {
+  if(!document.getElementById('theme-picker-wrap')?.contains(e.target))
+    document.getElementById('theme-dropdown').style.display='none';
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST MODAL
+// ═══════════════════════════════════════════════════════════
+window.openPost = function(card=null) {
+  editingCardId=card?.id||null; currentImageBase64=card?.imageUrl||null;
+  document.getElementById('post-modal-title').textContent=card?'Editar Nota':'Nueva Nota';
+  document.getElementById('post-btn-label').textContent=card?'Guardar':'Publicar';
+  document.getElementById('pf-username').value=card?.username||localStorage.getItem('board_nick')||'';
+  document.getElementById('pf-title').value=card?.title||'';
+  document.getElementById('pf-content').value=card?.content||'';
+  updateCounter(); buildColorPicker(card?.color||COLORS[0]); buildDrop(card?.imageUrl||null);
+  document.getElementById('post-modal').style.display='flex';
+};
+function closePost() { document.getElementById('post-modal').style.display='none'; editingCardId=null; currentImageBase64=null; }
+document.getElementById('post-modal-close')?.addEventListener('click',closePost);
+document.getElementById('post-cancel')?.addEventListener('click',closePost);
+document.getElementById('post-modal')?.addEventListener('click',e=>{ if(e.target===e.currentTarget) closePost(); });
+document.getElementById('pf-content')?.addEventListener('input',updateCounter);
+function updateCounter() { const v=document.getElementById('pf-content')?.value||''; const el=document.getElementById('content-counter'); if(el)el.textContent=`${v.length}/1200`; }
+
+function buildColorPicker(cur) {
+  selectedColor=(typeof cur==='object'&&cur?.bg)?cur:COLORS[0];
+  const cp=document.getElementById('color-picker'); if(!cp) return;
+  cp.innerHTML=COLORS.map((c,i)=>`<div class="color-swatch ${selectedColor.bg===c.bg?'active':''}" style="background:${c.bg};border-color:${c.border};" title="${c.name}" onclick="selColor(${i})"></div>`).join('');
+}
+window.selColor = function(i) { selectedColor=COLORS[i]; document.querySelectorAll('.color-swatch').forEach((el,j)=>el.classList.toggle('active',j===i)); };
+
+function buildDrop(existing) {
+  const wrap=document.getElementById('drop-zone-wrap'); if(!wrap) return;
+  if(existing) {
+    wrap.innerHTML=`<div class="img-preview"><img src="${existing}" alt="preview"/>
+      <button class="img-remove" type="button" onclick="rmImg()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
+  } else {
+    wrap.innerHTML=`<div class="drop-zone" id="drop-zone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <p><strong>Haz clic</strong> o arrastra · funciona con cámara en móvil</p>
+      <div class="formats">PNG · JPG · WEBP · GIF</div>
+      <input type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;opacity:0;cursor:pointer;" onchange="pickFile(this.files[0])"/>
+    </div>`;
+    const dz=document.getElementById('drop-zone');
+    dz?.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+    dz?.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+    dz?.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');pickFile(e.dataTransfer.files[0]);});
+  }
+}
+window.rmImg   = function() { currentImageBase64=null; buildDrop(null); };
+window.pickFile= async function(file) {
+  if(!file||!file.type.startsWith('image/')) return;
+  document.getElementById('drop-zone-wrap').innerHTML='<div class="compressing"><div class="spin"></div><span>Optimizando imagen...</span></div>';
+  try { currentImageBase64=await compressImg(file); buildDrop(currentImageBase64); }
+  catch(err) { console.error(err); buildDrop(null); }
+};
+
+document.getElementById('post-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const username=document.getElementById('pf-username').value.trim()||'Anónimo';
+  const title   =document.getElementById('pf-title').value.trim();
+  const content =document.getElementById('pf-content').value.trim();
+  if(!content && !currentImageBase64) { alert('Añade texto o imagen.'); return; }
+  localStorage.setItem('board_nick', username);
+
+  if(editingCardId) {
+    const patch = { username, title, content, color: JSON.stringify(selectedColor), imageUrl: currentImageBase64||cards[editingCardId]?.imageUrl||null };
+    cardsGun.get(editingCardId).put(patch);
+    Object.assign(cards[editingCardId]||{}, {...patch, color:selectedColor});
+    showSync('Nota actualizada');
+  } else {
+    highestZ++;
+    const id = uid();
+    const card = {
+      id, boardCode, username, title, content,
+      imageUrl: currentImageBase64||null,
+      color: JSON.stringify(selectedColor),
+      likes: 0, x: Math.random()*50+10, y: Math.random()*40+10,
+      zIndex: highestZ, comments: '{}',
+      createdAt: new Date().toISOString()
+    };
+    cardsGun.get(id).put(card);
+    cards[id] = {...card, color:selectedColor, comments:{}};
+    renderCards();
+    showSync('Nota publicada ✓');
+  }
+  closePost();
+});
+
+// ═══════════════════════════════════════════════════════════
+// SHARE
+// ═══════════════════════════════════════════════════════════
+window.setShareTab = function(tab) {
+  _shareTab=tab;
+  document.getElementById('tab-viewer')?.classList.toggle('active',tab==='viewer');
+  document.getElementById('tab-editor')?.classList.toggle('active',tab==='editor');
+  renderShareBody();
+};
+function renderShareBody() {
+  if(!board) return;
+  const base=location.origin+location.pathname;
+  const vUrl=`${base}?code=${boardCode}&role=viewer`;
+  const eUrl=`${base}?code=${boardCode}&key=${board.editKey}&role=editor`;
+  const url=_shareTab==='viewer'?vUrl:eUrl;
+  const isEd=_shareTab==='editor';
+  document.getElementById('share-modal-body').innerHTML=`
+    <div class="code-display">
+      <div class="code-label">Código del tablero</div>
+      <div class="code-big">${boardCode}</div>
+      <div class="code-hint">Introdúcelo en la pantalla de inicio para unirse en modo lectura</div>
     </div>
-  </div>
+    <div class="share-warning ${isEd?'warn-editor':''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>${isEd?'<strong>Cuidado:</strong> Este enlace da permisos de edición completos.':'Solo lectura — nadie puede modificar el tablero con este enlace.'}</span>
+    </div>
+    <div class="qr-box">
+      <img src="${qrUrl(url)}" alt="QR código de acceso"/>
+      <div class="qr-hint">Escanea con la cámara del móvil</div>
+    </div>
+    <div class="share-label">${isEd?'Enlace de editor':'Enlace de solo lectura'}</div>
+    <div class="link-copy-row">
+      <input class="link-input" type="text" readonly value="${url}" id="share-url-input"/>
+      <button class="copy-btn" id="copy-btn" onclick="copyUrl()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar
+      </button>
+    </div>`;
+}
+window.copyUrl = function() {
+  const inp=document.getElementById('share-url-input'); if(!inp) return;
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    const btn=document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Copiado!';
+    setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar';},2500);
+  });
+};
+document.getElementById('share-btn')?.addEventListener('click',()=>{ _shareTab='viewer'; document.getElementById('share-modal').style.display='flex'; renderShareBody(); });
+document.getElementById('share-modal-close')?.addEventListener('click',()=>document.getElementById('share-modal').style.display='none');
+document.getElementById('share-modal')?.addEventListener('click',e=>{ if(e.target===e.currentTarget)e.currentTarget.style.display='none'; });
 
+// ═══════════════════════════════════════════════════════════
+// PDF — renderizado directo en canvas (sin html2canvas)
+// ═══════════════════════════════════════════════════════════
+document.getElementById('pdf-btn')?.addEventListener('click', async () => {
+  const loading = document.getElementById('pdf-loading');
+  loading.classList.add('visible');
+  try {
+    const list = Object.values(cards)
+      .filter(c => !getRem(c.createdAt).expired)
+      .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-  <!-- Modal 4: Full Image Viewer ZoomOverlay -->
-  <div id="zoom-overlay" onclick="closeZoomImageViewer()" class="hidden fixed inset-0 z-300 bg-black/95 flex items-center justify-center p-4 cursor-zoom-out">
-    <button onclick="closeZoomImageViewer()" class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition">
-      <i data-lucide="x" class="w-6 h-6"></i>
-    </button>
-    <img id="zoom-overlay-img" src="" alt="Zoom" class="max-w-full max-h-[92vh] object-contain shadow-2xl select-none pointer-events-none rounded">
-  </div>
+    if (!list.length) { alert('El tablero está vacío.'); return; }
 
+    // Parámetros de layout
+    const COLS   = Math.min(3, list.length);
+    const CARD_W = 320, CARD_H = 280, PAD = 24, TOP = 90;
+    const ROWS   = Math.ceil(list.length / COLS);
+    const W      = COLS * (CARD_W + PAD) + PAD;
+    const H      = TOP + ROWS * (CARD_H + PAD) + PAD + 50;
 
-  <!-- Loading PDF export overlay -->
-  <div id="pdf-exporting-overlay" class="hidden fixed inset-0 z-500 bg-editorial/90 backdrop-blur-xs flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
-    <div class="w-8 h-8 border-3 border-ink border-t-transparent rounded-full animate-spin"></div>
-    <span class="text-xs font-bold uppercase tracking-widest text-[#1a1512] animate-pulse">Capturando pizarra y generando PDF...</span>
-  </div>
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
 
+    // Fondo
+    ctx.fillStyle = '#faf7f2';
+    ctx.fillRect(0, 0, W, H);
 
+    // Patrón de puntos
+    ctx.fillStyle = 'rgba(26,21,18,0.05)';
+    for(let x=0; x<W; x+=22) for(let y=0; y<H; y+=22) {
+      ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
+    }
 
+    // Cabecera
+    ctx.fillStyle = '#1a1512';
+    ctx.fillRect(0, 0, W, 60);
+    ctx.fillStyle = '#c8541a';
+    ctx.fillRect(0, 0, W, 8);
 
+    ctx.fillStyle = '#faf7f2';
+    ctx.font = 'bold 22px serif';
+    ctx.fillText('Comparte con @GmedranoTIC', PAD, 40);
 
-  <!-- ════════════════ APPLICATION STATE & LOGIC ════════════════ -->
-  <script type="text/javascript">
-    // ✦ CONSTANTS & CONFIGS
-    const EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours notes validation limit
+    ctx.fillStyle = 'rgba(250,247,242,0.5)';
+    ctx.font = '11px monospace';
+    ctx.fillText(`Tablero: ${boardCode}  ·  ${new Date().toLocaleDateString('es-ES')}`, PAD, 56);
 
-    const THEME_OPTIONS = [
-      {
-        id: 'editorial',
-        name: 'Editorial 🪶',
-        bgClass: 'bg-editorial',
-        isDark: false
-      },
-      {
-        id: 'minimalist',
-        name: 'Técnico 📐',
-        bgClass: 'bg-minimalist',
-        isDark: false
-      },
-      {
-        id: 'sunset',
-        name: 'Atardecer 🌅',
-        bgClass: 'bg-sunset',
-        isDark: true
-      },
-      {
-        id: 'sage',
-        name: 'Olivo 🌿',
-        bgClass: 'bg-sage',
-        isDark: false
-      },
-      {
-        id: 'cyber',
-        name: 'Cyber 🌌',
-        bgClass: 'bg-cyber',
-        isDark: true
+    // Marca de agua diagonal
+    ctx.save();
+    ctx.translate(W/2, H/2);
+    ctx.rotate(-Math.PI/8);
+    ctx.font = 'bold 72px serif';
+    ctx.fillStyle = 'rgba(200,84,26,0.045)';
+    ctx.textAlign = 'center';
+    ctx.fillText('@GmedranoTIC', 0, 0);
+    ctx.restore();
+
+    // Polyfill roundRect para Safari/Firefox antiguos
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r) {
+        const rr = typeof r === 'number' ? [r,r,r,r] : (r||[0,0,0,0]);
+        const [tl=0,tr=0,br=0,bl=0] = rr;
+        this.moveTo(x+tl, y);
+        this.lineTo(x+w-tr, y); this.arcTo(x+w,y, x+w,y+tr, tr);
+        this.lineTo(x+w, y+h-br); this.arcTo(x+w,y+h, x+w-br,y+h, br);
+        this.lineTo(x+bl, y+h); this.arcTo(x,y+h, x,y+h-bl, bl);
+        this.lineTo(x, y+tl); this.arcTo(x,y, x+tl,y, tl);
+        this.closePath();
+      };
+    }
+
+    // Cargar imágenes en paralelo
+    const imgCache = {};
+    await Promise.all(list.map(card => new Promise(res => {
+      if (!card.imageUrl) { res(); return; }
+      const img = new Image();
+      img.onload  = () => { imgCache[card.id] = img; res(); };
+      img.onerror = () => res();
+      img.src = card.imageUrl;
+    })));
+
+    // Dibujar tarjetas
+    list.forEach((card, i) => {
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      const x   = PAD + col * (CARD_W + PAD);
+      const y   = TOP + row * (CARD_H + PAD);
+      const c   = card.color || COLORS[0];
+
+      // Sombra
+      ctx.shadowColor   = 'rgba(26,21,18,0.12)';
+      ctx.shadowBlur    = 10;
+      ctx.shadowOffsetY = 4;
+
+      // Fondo tarjeta
+      ctx.fillStyle = c.bg || '#fff';
+      ctx.beginPath();
+      ctx.roundRect(x, y, CARD_W, CARD_H, 4);
+      ctx.fill();
+
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+      // Borde
+      ctx.strokeStyle = c.border || '#e8e2d5';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.roundRect(x, y, CARD_W, CARD_H, 4);
+      ctx.stroke();
+
+      // Franja superior coloreada
+      ctx.fillStyle = c.bg === '#ffffff' || c.bg === '#fdfbf7' ? '#c8541a' : (c.border || '#c8541a');
+      ctx.beginPath();
+      ctx.roundRect(x, y, CARD_W, 6, [4, 4, 0, 0]);
+      ctx.fill();
+
+      let curY = y + 16;
+
+      // Autor
+      ctx.fillStyle = c.text || '#1a1512';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 0.6;
+      ctx.fillText(('✍ ' + (card.username || 'Anónimo')).slice(0, 38), x + 10, curY);
+      ctx.globalAlpha = 1;
+      curY += 16;
+
+      // Imagen si existe
+      const img = imgCache[card.id];
+      if (img) {
+        const ih = Math.min(100, CARD_H * 0.35);
+        const iw = CARD_W - 2;
+        const sr = img.width / img.height;
+        const dr = iw / ih;
+        let sx=0, sy=0, sw=img.width, sh=img.height;
+        if (sr > dr) { sw = img.height*dr; sx = (img.width-sw)/2; }
+        else          { sh = img.width/dr; sy = (img.height-sh)/2; }
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x+1, curY, iw, ih);
+        ctx.clip();
+        ctx.drawImage(img, sx, sy, sw, sh, x+1, curY, iw, ih);
+        ctx.restore();
+        curY += ih + 8;
       }
-    ];
 
-    const CARD_COLORS = [
-      { name: 'Blanco', bg: '#ffffff', border: 'rgba(26,21,18,0.12)', text: '#1a1512', isDark: false },
-      { name: 'Naranja', bg: '#f97316', border: '#ea580c', text: '#ffffff', isDark: true },
-      { name: 'Crema', bg: '#fffbeb', border: 'rgba(217,119,6,0.2)', text: '#78350f', isDark: false },
-      { name: 'Azul', bg: '#f0f9ff', border: 'rgba(14,165,233,0.2)', text: '#0369a1', isDark: false },
-      { name: 'Verde', bg: '#f0fdf4', border: 'rgba(34,197,94,0.2)', text: '#15803d', isDark: false },
-      { name: 'Dorado', bg: '#eab308', border: '#ca8a04', text: '#ffffff', isDark: true },
-      { name: 'Oscuro', bg: '#1a1512', border: 'rgba(255,255,255,0.1)', text: '#f2ede4', isDark: true },
-      { name: 'Lila', bg: '#faf5ff', border: 'rgba(168,85,247,0.2)', text: '#7e22ce', isDark: false }
-    ];
-
-    // ✦ APPLICATION STORES / LOCAL STATES
-    let boardCode = null;
-    let role = 'viewer'; // 'editor' | 'viewer'
-    let editKey = ''; 
-    let boardState = null; // BoardState schema
-    let layoutMode = 'grid'; // 'grid' | 'canvas'
-
-    // User Nickname State
-    let userNickname = '';
-
-    // Connection & Synchronization references
-    let myPeer = null;
-    let myPeerId = '';
-    let activeConnections = {}; // Map of peer ID -> DataConnection
-    let peerStatus = 'disconnected'; // 'connecting' | 'connected' | 'hosting' | 'error' | 'disconnected'
-    let reconnectTimer = null;
-    let highestZ = 12;
-
-    // Note Editor local modals states
-    let editingNoteId = null; 
-    let activeSelectedColor = CARD_COLORS[0];
-    let loadedImageBase64 = null;
-    let activeShareTab = 'viewer';
-
-    // ✦ INITIALIZATION & URL ROUTER ON LOAD
-    window.addEventListener('DOMContentLoaded', () => {
-      // Initialize dynamic icon elements from Lucide SVG CDN
-      lucide.createIcons();
-
-      // Read user nickname
-      const savedNickname = localStorage.getItem('board_nick');
-      if (savedNickname) {
-        userNickname = savedNickname;
-      } else {
-        const prefaces = ['Ardilla', 'Nutria', 'Búho', 'Erizo', 'Zorro', 'Mapache', 'Lince', 'Delfín'];
-        const postfixes = ['Digital', 'Creativo', 'Curioso', 'Tecnológico', 'Veloz', 'Visual', 'Sincero'];
-        const generated = prefaces[Math.floor(Math.random() * prefaces.length)] + ' ' + postfixes[Math.floor(Math.random() * postfixes.length)];
-        userNickname = generated;
-        localStorage.setItem('board_nick', generated);
+      // Título
+      if (card.title) {
+        ctx.fillStyle = c.text || '#1a1512';
+        ctx.font = 'bold 13px serif';
+        ctx.textAlign = 'left';
+        const tLines = wrapText(ctx, card.title, CARD_W - 20);
+        tLines.slice(0, 2).forEach(line => {
+          ctx.fillText(line, x+10, curY); curY += 17;
+        });
       }
 
-      // Populate themes lobby selector config
-      renderLobbyThemes();
+      // Contenido
+      if (card.content) {
+        ctx.fillStyle = c.text || '#1a1512';
+        ctx.globalAlpha = 0.82;
+        ctx.font = '11.5px sans-serif';
+        const maxLines = img ? 4 : 8;
+        const cLines = wrapText(ctx, card.content, CARD_W - 20);
+        cLines.slice(0, maxLines).forEach(line => {
+          if (curY < y + CARD_H - 20) { ctx.fillText(line, x+10, curY); curY += 16; }
+        });
+        ctx.globalAlpha = 1;
+      }
 
-      // Render recent boards visited list
-      renderLobbyRecents();
-
-      // Parse current routing details
-      parseQueryParametersRoute();
-
-      // Setup note character text length validations
-      document.getElementById('note-message-input').addEventListener('input', (e) => {
-        const count = e.target.value.length;
-        document.getElementById('note-char-counter').textContent = `${count}/1000`;
-      });
-
-      // Expired items periodic checklist
-      setInterval(pruneExpiredElementsLive, 20000);
+      // Footer: likes y tiempo restante
+      ctx.fillStyle = c.border || '#e8e2d5';
+      ctx.fillRect(x, y + CARD_H - 22, CARD_W, 1);
+      ctx.fillStyle = c.text || '#1a1512';
+      ctx.globalAlpha = 0.5;
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`♥ ${card.likes||0}  ·  -${getRem(card.createdAt).text}`, x+10, y+CARD_H-8);
+      ctx.globalAlpha = 1;
     });
 
-    // Handle deep routing parameter query setups
-    function parseQueryParametersRoute() {
-      const q = new URLSearchParams(window.location.search);
-      const code = q.get('code');
-      const paramRole = q.get('role');
-      const key = q.get('key');
+    // Pie
+    ctx.fillStyle = 'rgba(26,21,18,0.35)';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('@GmedranoTIC · tablero colaborativo temporal', W/2, H - 12);
 
-      if (code && code.trim().length === 6) {
-        boardCode = code.trim().toUpperCase();
-        role = paramRole === 'editor' ? 'editor' : 'viewer';
-        editKey = key || '';
-        
-        // Settle lobby display to app container directly
-        document.getElementById('lobby').classList.add('hidden');
-        document.getElementById('board').classList.remove('hidden');
+    // Exportar
+    const {jsPDF} = window.jspdf;
+    const orient  = W > H ? 'landscape' : 'portrait';
+    const pdf     = new jsPDF({orientation: orient, unit:'px', format:[W, H], hotfixes:['px_scaling']});
+    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, W, H);
+    pdf.save(`GmedranoTIC_${boardCode}.pdf`);
 
-        // Boot peerJS network whiteboard
-        initializeP2PLinkNetwork();
-      } else {
-        // Safe reset state display
-        document.getElementById('lobby').classList.remove('hidden');
-        document.getElementById('board').classList.add('hidden');
-        disconnectPeerSocketConnection();
+  } catch(err) { console.error(err); alert('Error al generar el PDF: ' + err.message); }
+  finally { loading.classList.remove('visible'); }
+});
+
+function wrapText(ctx, text, maxW) {
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GUARDAR TABLERO COMO ARCHIVO LOCAL
+// ═══════════════════════════════════════════════════════════
+document.getElementById('save-btn')?.addEventListener('click', () => {
+  if (!board || !boardCode) return;
+  const snapshot = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    board: {
+      code:      board.code,
+      title:     board.title,
+      desc:      board.desc,
+      wallpaper: board.wallpaper,
+      editKey:   board.editKey,
+      createdAt: board.createdAt
+    },
+    cards: Object.values(cards).filter(c => !getRem(c.createdAt).expired).map(c => ({
+      ...c,
+      color:    typeof c.color === 'object' ? JSON.stringify(c.color) : c.color,
+      comments: typeof c.comments === 'object' ? JSON.stringify(c.comments) : c.comments
+    }))
+  };
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `GmedranoTIC_${boardCode}.gmt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showSync('Tablero guardado ✓');
+});
+
+// ═══════════════════════════════════════════════════════════
+// CARGAR TABLERO DESDE ARCHIVO LOCAL
+// ═══════════════════════════════════════════════════════════
+document.getElementById('load-btn')?.addEventListener('click', () => {
+  if (!isEditor) { alert('Solo los editores pueden cargar un tablero.'); return; }
+  document.getElementById('load-file-input').click();
+});
+
+document.getElementById('load-file-input')?.addEventListener('change', function() {
+  const file = this.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const snap = JSON.parse(e.target.result);
+      if (!snap.version || !snap.board || !Array.isArray(snap.cards)) {
+        alert('Archivo no válido. Usa un archivo .gmt exportado desde esta aplicación.'); return;
       }
-    }
-
-    // Render active themes options in lobby grid
-    function renderLobbyThemes() {
-      const container = document.getElementById('lobby-theme-grid');
-      container.innerHTML = '';
-      
-      THEME_OPTIONS.forEach((t, index) => {
-        const activeClass = index === 0 ? 'ring-2 ring-ink border-transparent shadow-md scale-102 font-semibold' : 'border-neutral-200 hover:border-neutral-400';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.id = `lobby-theme-btn-${t.id}`;
-        button.className = `lobby-theme-pill rounded-lg border p-1 text-left relative overflow-hidden transition-all text-xs h-12 flex flex-col justify-end select-none ${activeClass}`;
-        button.onclick = () => selectLobbyTemplateTheme(t.id);
-
-        button.innerHTML = `
-          <div class="absolute inset-0 opacity-45 ${t.bgClass}"></div>
-          <span class="relative z-10 text-[9px] font-medium bg-white/95 px-1.5 py-0.5 rounded-sm truncate max-w-full uppercase tracking-wide border border-black/5">
-            ${t.name}
-          </span>
-        `;
-        container.appendChild(button);
-      });
-
-      // Save select reference active
-      container.dataset.selectedTheme = THEME_OPTIONS[0].id;
-    }
-
-    function selectLobbyTemplateTheme(themeId) {
-      document.querySelectorAll('.lobby-theme-pill').forEach(btn => {
-        btn.classList.remove('ring-2', 'ring-ink', 'border-transparent', 'shadow-md', 'scale-102', 'font-semibold');
-        btn.classList.add('border-neutral-200', 'hover:border-neutral-400');
-      });
-
-      const selected = document.getElementById(`lobby-theme-btn-${themeId}`);
-      if (selected) {
-        selected.classList.remove('border-neutral-200', 'hover:border-neutral-400');
-        selected.classList.add('ring-2', 'ring-ink', 'border-transparent', 'shadow-md', 'scale-102', 'font-semibold');
-      }
-
-      document.getElementById('lobby-theme-grid').dataset.selectedTheme = themeId;
-    }
-
-    // Render recents visitations list
-    function renderLobbyRecents() {
-      const parent = document.getElementById('lobby-recents-list');
-      parent.innerHTML = '';
-
-      let list = [];
-      try {
-        list = JSON.parse(localStorage.getItem('gmt_recents') || '[]');
-      } catch (err) {
-        list = [];
-      }
-
-      // Filter expired links
-      const activeList = list.filter((b) => {
-        const created = new Date(b.createdAt).getTime();
-        return created + EXPIRY_MS > Date.now();
-      });
-
-      if (activeList.length === 0) {
-        parent.innerHTML = '<p class="text-[11px] italic text-neutral-450 py-3 text-center">No has visitado tableros temporales hoy.</p>';
-        return;
-      }
-
-      activeList.forEach((item) => {
-        const itemEl = document.createElement('div');
-        itemEl.className = 'flex items-center justify-between p-2 rounded-lg border border-neutral-200 hover:border-ink bg-[#faf7f2]/40 hover:bg-white cursor-pointer transition-all select-none';
-        itemEl.onclick = () => {
-          // Direct navigate parameters
-          const nextUrl = `?code=${item.code}&role=${item.hasKey ? 'editor' : 'viewer'}`;
-          window.history.pushState({}, '', nextUrl);
-          parseQueryParametersRoute();
-        };
-
-        itemEl.innerHTML = `
-          <div class="min-w-0 flex-1 pr-2">
-            <span class="font-serif font-bold text-xs truncate block text-neutral-900">${item.title}</span>
-            <span class="font-mono text-[9px] uppercase tracking-wider text-neutral-400 block mt-0.5">
-              Código: <strong class="text-neutral-700">${item.code}</strong>
-            </span>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${
-              item.hasKey ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-neutral-150 border-neutral-300 text-neutral-600'
-            }">
-              ${item.hasKey ? 'EDITOR' : 'LECTOR'}
-            </span>
-            <button
-              onclick="deleteRecentRecord(event, '${item.code}')"
-              class="w-6 h-6 rounded-md hover:bg-rose-50 hover:text-rose-650 flex items-center justify-center text-neutral-400 transition-colors shrink-0"
-              title="Eliminar de mi lista"
-            >
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        `;
-        parent.appendChild(itemEl);
-      });
-
-      // Refresh newly rendered trash icons
-      lucide.createIcons();
-    }
-
-    function deleteRecentRecord(event, code) {
-      if (event) event.stopPropagation();
-      const confirmed = confirm('¿Seguro que quieres eliminar este tablero de tu lista para que ya no aparezca en el menú principal?');
-      if (!confirmed) return;
-
-      let list = [];
-      try {
-        list = JSON.parse(localStorage.getItem('gmt_recents') || '[]');
-      } catch (e) {
-        list = [];
-      }
-
-      const filtered = list.filter(item => item.code !== code);
-      localStorage.setItem('gmt_recents', JSON.stringify(filtered));
-      localStorage.removeItem(`gmt_state_${code}`);
-
-      renderLobbyRecents();
-    }
-
-    function addRecentRecord(code, title, hasKey) {
-      let list = [];
-      try {
-        list = JSON.parse(localStorage.getItem('gmt_recents') || '[]');
-      } catch (e) {
-        list = [];
-      }
-      
-      const filtered = list.filter(item => item.code !== code);
-      const updated = [
-        { code, title, hasKey, createdAt: new Date().toISOString() },
-        ...filtered
-      ].slice(0, 8); // keep maximum 8 entries
-
-      localStorage.setItem('gmt_recents', JSON.stringify(updated));
-    }
-
-
-    // ✦ CREATE BOARD FLOW FUNCTION
-    document.getElementById('create-board-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const title = document.getElementById('create-title-input').value.trim() || 'Tablero de GmedranoTIC';
-      const desc = document.getElementById('create-desc-input').value.trim() || 'Colaboración libre en tiempo real';
-      const selectedTheme = document.getElementById('lobby-theme-grid').dataset.selectedTheme || 'editorial';
-
-      // Generate random 6 characters code
-      const setOfChar = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      const code = Array.from({ length: 6 }, () => setOfChar[Math.floor(Math.random() * setOfChar.length)]).join('');
-      
-      // Admin Key helper
-      const secretAdminKey = `ek_${Date.now()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-
-      // Set URL states path
-      const nextUrl = `?code=${code}&role=editor&key=${secretAdminKey}`;
-      window.history.pushState({}, '', nextUrl);
-      parseQueryParametersRoute();
-    });
-
-    // ✦ JOIN BY CODE ACTION
-    document.getElementById('join-board-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const codeValue = document.getElementById('join-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-      
-      if (codeValue.length !== 6) {
-        alert('El código debe constar de exactamente de 6 caracteres.');
-        return;
-      }
-
-      // Check if local storage holds administrator key for this specific code to login as editor automatically!
-      let localRecents = [];
-      try { localRecents = JSON.parse(localStorage.getItem('gmt_recents') || '[]'); } catch (err) {}
-      const match = localRecents.find(r => r.code === codeValue && r.hasKey);
-
-      let nextUrl = `?code=${codeValue}&role=viewer`;
-      if (match) {
-        // Found matching administrator trace key, elevating
-        const savedState = localStorage.getItem(`gmt_state_${codeValue}`);
-        if (savedState) {
-          try {
-            const parsed = JSON.parse(savedState);
-            if (parsed.editKey) {
-              nextUrl = `?code=${codeValue}&role=editor&key=${parsed.editKey}`;
-            }
-          } catch (e) {}
-        }
-      }
-
-      window.history.pushState({}, '', nextUrl);
-      parseQueryParametersRoute();
-    });
-
-
-    // ✦ EXTINGUISH PEERS & WEB ROUTING BACK
-    function exitToLobby() {
-      disconnectPeerSocketConnection();
-      boardCode = null;
-      boardState = null;
-      role = 'viewer';
-      editKey = '';
-
-      // Clean browser url query params
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.pushState({}, '', cleanUrl);
-
-      // Settle interfaces
-      document.getElementById('lobby').classList.remove('hidden');
-      document.getElementById('board').classList.add('hidden');
-      
-      // Redraw list record elements
-      renderLobbyRecents();
-    }
-
-
-    // ✦ REAL-TIME SEAMLESS SYNCHRONIZATION VIA PURE PEERJS WEBRTC
-    async function updateAndSyncBoardState(updatedState) {
-      if (!updatedState) return;
-      boardState = updatedState;
-
-      // Persist to LocalStorage
-      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-
-      // Persist to REST endpoint database backup
-      try {
-        await fetch(`/api/board/${boardCode}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boardState })
-        });
-      } catch (err) {
-        console.warn("[SYNC] POST state tracking storage failed:", err);
-      }
-    }
-
-    async function loadBoardStateFromServer() {
-      if (!boardCode) return false;
-
-      // Primary: Try fetching the up-to-date state from standard backend API
-      try {
-        const res = await fetch(`/api/board/${boardCode}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.success && data.boardState) {
-            console.log("[SYNC] Latest board state fetched from Express server REST database successfully.");
-            boardState = data.boardState;
-            localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-            renderWhiteboardHeader();
-            renderWhiteboardCards();
-            renderSettingsDropdown();
-            return true;
-          }
-        }
-      } catch (e) {
-        console.warn("[SYNC] Fetching from REST server database failed, falling back to cache.", e);
-      }
-
-      // Fallback: Read local cache
-      const cached = localStorage.getItem(`gmt_state_${boardCode}`);
-      if (cached) {
-        try {
-          boardState = JSON.parse(cached);
-          
-          // Render interfaces instantly
-          renderWhiteboardHeader();
-          renderWhiteboardCards();
-          renderSettingsDropdown();
-          return true;
-        } catch (e) {
-          return false;
-        }
-      }
-      return false;
-    }
-
-    function disconnectPeerSocketConnection() {
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-
-      // Close all direct WebRTC node connections safely
-      Object.keys(activeConnections).forEach((peerId) => {
-        try {
-          activeConnections[peerId].close();
-        } catch (e) {}
-        delete activeConnections[peerId];
-      });
-
-      if (myPeer) {
-        try {
-          myPeer.destroy();
-        } catch (e) {}
-        myPeer = null;
-      }
-
-      peerStatus = 'disconnected';
-      updatePeersStatusVisuals(0);
-    }
-
-    async function initializeP2PLinkNetwork() {
-      disconnectPeerSocketConnection();
-      setStatusNetworkProgress('connecting', 'Estableciendo canal (P2P)...');
-
-      // Attempt loading state from backend database API
-      const hasCachedState = await loadBoardStateFromServer();
-
-      if (!hasCachedState && role === 'editor') {
-        console.log("[P2P] No saved state. Constructing raw new master whiteboard workspace...");
-        initiateNewMasterState();
-        await updateAndSyncBoardState(boardState);
-      }
-
-      const peerConfig = {
-          host: '0.peerjs.com',
-          port: 443,
-          path: '/',
-          secure: true,
-          debug: 1,
-          config: {
-              iceServers: [
-                { urls: 'stun:stun.relay.metered.ca:80' },
-                { 
-                  urls: 'turn:standard.relay.metered.ca:80', 
-                  username: '9745e21b303bdaea589c29bc', 
-                  credential: 'UgG56tBqCEGNjzLY' 
-                },
-                { 
-                  urls: 'turn:standard.relay.metered.ca:443?transport=tcp', 
-                  username: '9745e21b303bdaea589c29bc', 
-                  credential: 'UgG56tBqCEGNjzLY' 
-                }
-              ],
-              iceTransportPolicy: 'all'
-          }
-      };
-
-      const anchorHostId = `gmedranotic-board-host-${boardCode}`;
-      console.log("[P2P] Attempting to host whiteboard session as primary anchor of:", anchorHostId);
-
-      myPeer = new Peer(anchorHostId, peerConfig);
-
-      myPeer.on('open', (id) => {
-        console.log("[P2P] Peer anchor registered successfully. Acting as HOST for this session:", id);
-        myPeerId = id;
-        peerStatus = 'hosting';
-        setStatusNetworkProgress('hosting', 'Pizarra Activa (Host)');
-
-        // Listen for incoming guest node connections
-        myPeer.on('connection', (conn) => {
-          setupConnection(conn, true);
-        });
-      });
-
-      myPeer.on('error', (err) => {
-        if (err.type === 'unavailable-id') {
-          console.log("[P2P] Host anchor is already busy (another device is Host). Registering as guest client...");
-          
-          if (myPeer) {
-            myPeer.destroy();
-            myPeer = null;
-          }
-
-          myPeer = new Peer(null, peerConfig);
-
-          myPeer.on('open', (id) => {
-            console.log("[P2P] Guest registered successfully with PeerJS Broker. Peer ID:", id);
-            myPeerId = id;
-            peerStatus = 'connecting';
-            setStatusNetworkProgress('connecting', 'Conectando con Host...');
-
-            const conn = myPeer.connect(anchorHostId, { reliable: true });
-            setupConnection(conn, false);
-          });
-
-          myPeer.on('error', (clientErr) => {
-            console.error("[P2P] Dynamic guest client network error:", clientErr);
-            setStatusNetworkProgress('error', 'Fallo conexión P2P');
-          });
-        } else {
-          console.warn("[P2P] Primary PeerJS registration or connection error:", err);
-          setStatusNetworkProgress('error', 'Fallo conexión P2P');
-        }
-      });
-    }
-
-    function setupConnection(conn, isServerHost) {
-      console.log(`[P2P] Bonding connection channel with peer: ${conn.peer}. Host? ${isServerHost}`);
-
-      conn.on('open', () => {
-        activeConnections[conn.peer] = conn;
-        // Number of other connected users
-        updatePeersStatusVisuals(Object.keys(activeConnections).length);
-
-        if (isServerHost) {
-          // Send master state to client
-          setStatusNetworkProgress('hosting', 'Pizarra Activa (Host)');
-          conn.send({
-            type: 'STATE_SHARE',
-            payload: boardState
-          });
-        } else {
-          peerStatus = 'connected';
-          setStatusNetworkProgress('connected', 'Conectado (Participante)');
-        }
-      });
-
-      conn.on('data', (data) => {
-        if (!data) return;
-        console.log(`[P2P] Decoded incoming packet [${data.type}] from peer: ${conn.peer}`);
-
-        if (data.type === 'STATE_SHARE' || data.type === 'STATE_BROADCAST') {
-          if (data.payload) {
-            boardState = data.payload;
-            localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-            addRecentRecord(boardState.code, boardState.title, role === 'editor');
-            
-            renderWhiteboardHeader();
-            renderWhiteboardCards();
-            renderSettingsDropdown();
-          }
-        } else if (data.type === 'ACTION_DISPATCH') {
-          const { actionType, payload } = data;
-          processWhiteboardActionDispatch(actionType, payload, false);
-
-          if (isServerHost) {
-            // Coordinator rebroadcasts actions to all other client channels
-            Object.keys(activeConnections).forEach((peerId) => {
-              if (peerId !== conn.peer) {
-                const c = activeConnections[peerId];
-                if (c && c.open) {
-                  c.send({
-                    type: 'ACTION_DISPATCH',
-                    actionType,
-                    payload
-                  });
-                }
-              }
-            });
-          }
-        }
-      });
-
-      conn.on('close', () => {
-        console.log("[P2P] Peer connection closed:", conn.peer);
-        delete activeConnections[conn.peer];
-        updatePeersStatusVisuals(Object.keys(activeConnections).length);
-
-        if (!isServerHost) {
-          console.warn("[P2P] Disconnected from Host anchor. Initiating reconnection...");
-          handleAnchorLoss();
-        }
-      });
-
-      conn.on('error', (err) => {
-        console.error("[P2P] Connection error with peer:", conn.peer, err);
-        delete activeConnections[conn.peer];
-        updatePeersStatusVisuals(Object.keys(activeConnections).length);
-      });
-    }
-
-    function handleAnchorLoss() {
-      disconnectPeerSocketConnection();
-      setStatusNetworkProgress('connecting', 'Reconectando con el Hub...');
-      
-      if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          if (boardCode) {
-            initializeP2PLinkNetwork();
-          }
-        }, 2000);
-      }
-    }
-
-    function initiateNewMasterState() {
-      boardState = {
-        code: boardCode,
-        title: document.getElementById('create-title-input').value.trim() || 'Tablero GmedranoTIC',
-        description: document.getElementById('create-desc-input').value.trim() || 'Colaboración libre en tiempo real',
-        wallpaper: document.getElementById('lobby-theme-grid').dataset.selectedTheme || 'editorial',
-        editKey: editKey,
-        createdAt: new Date().toISOString(),
-        notes: {}
-      };
-      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-    }
-
-    function broadcastWHITEBOARDStateAcrossNodes(state) {
-      Object.keys(activeConnections).forEach((peerId) => {
-        const c = activeConnections[peerId];
-        if (c && c.open) {
-          c.send({
-            type: 'STATE_SHARE',
-            payload: state
-          });
-        }
-      });
-      // Also persist to Server memory
-      if (peerStatus === 'hosting') {
-        updateAndSyncBoardState(state);
-      }
-    }
-
-    // DISPATCH ACTION PIPELINE
-    function dispatchWhiteboardAction(actionType, payload) {
-      if (!boardState) return;
-
-      // Optimistic local update (perfect instant response experience!)
-      processWhiteboardActionDispatch(actionType, payload, false);
-
-      // Mutates and sends across all open peer data channels
-      Object.keys(activeConnections).forEach((peerId) => {
-        const c = activeConnections[peerId];
-        if (c && c.open) {
-          c.send({
-            type: 'ACTION_DISPATCH',
-            actionType,
-            payload
-          });
-        }
-      });
-
-      // Synchronize back to persistence on Server database as well if Host
-      if (peerStatus === 'hosting') {
-        updateAndSyncBoardState(boardState);
-      }
-    }
-
-    function processWhiteboardActionDispatch(actionType, payload, isHostSelf) {
-      if (!boardState) return;
-
-      const workingNotes = { ...boardState.notes };
-
-      switch (actionType) {
-        case 'MUTATE_NOTE':
-          workingNotes[payload.id] = payload;
-          break;
-
-        case 'DELETE_NOTE':
-          delete workingNotes[payload.id];
-          break;
-
-        case 'LIKE_NOTE':
-          if (workingNotes[payload.id]) {
-            workingNotes[payload.id].likes = (workingNotes[payload.id].likes || 0) + 1;
-          }
-          break;
-
-        case 'ADD_COMMENT':
-          const { cardId, comment } = payload;
-          if (workingNotes[cardId]) {
-            const list = [...(workingNotes[cardId].comments || [])];
-            list.push(comment);
-            workingNotes[cardId].comments = list;
-          }
-          break;
-
-        case 'MOVE_NOTE':
-          const { id, x, y, zIndex } = payload;
-          if (workingNotes[id]) {
-            workingNotes[id].x = x;
-            workingNotes[id].y = y;
-            workingNotes[id].zIndex = zIndex || workingNotes[id].zIndex;
-          }
-          break;
-
-        default:
-          break;
-      }
-
-      boardState = {
-        ...boardState,
-        notes: workingNotes
-      };
-
-      localStorage.setItem(`gmt_state_${boardCode}`, JSON.stringify(boardState));
-
-      // Redraw active views card
-      renderWhiteboardCards();
-    }
-
-
-    // ✦ VIEW DRAWERS & COMPONENT RENDERS
-    function setStatusNetworkProgress(type, textLabel) {
-      const dot = document.getElementById('peer-status-dot');
-      const textEl = document.getElementById('peer-status-text');
-
-      dot.className = "w-2.5 h-2.5 rounded-full animate-pulse ";
-      if (type === 'hosting' || type === 'server-sync') {
-        dot.classList.add('bg-emerald-500');
-      } else if (type === 'connected') {
-        dot.classList.add('bg-blue-500');
-      } else if (type === 'connecting') {
-        dot.classList.add('bg-amber-500');
-      } else if (type === 'error') {
-        dot.classList.add('bg-rose-500');
-      } else {
-        dot.classList.add('bg-neutral-400');
-      }
-
-      textEl.textContent = textLabel;
-    }
-
-    function updatePeersStatusVisuals(count) {
-      const sub = document.getElementById('peer-status-sub');
-      sub.textContent = count === 1 ? '1 par activo' : `${count} pares activos`;
-
-      // Show floating FAB and menu adjustments based on privileges
-      const fab = document.getElementById('board-fab');
-      if (role === 'editor') {
-        fab.classList.remove('hidden');
-        fab.classList.add('flex');
-      } else {
-        fab.classList.add('hidden');
-        fab.classList.remove('flex');
-      }
-    }
-
-    function renderWhiteboardHeader() {
-      if (!boardState) return;
-
-      // Update basic fields
-      document.getElementById('hdr-board-title').textContent = boardState.title;
-      document.getElementById('hdr-board-code').textContent = boardState.code;
-      document.getElementById('hdr-nick-text').textContent = userNickname;
-
-      const badge = document.getElementById('hdr-badge');
-      if (role === 'editor') {
-        badge.className = 'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md select-none border bg-orange-50 border-orange-200 text-orange-700';
-        badge.textContent = '✍️ Editor';
-      } else {
-        badge.className = 'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md select-none border bg-neutral-100 border-neutral-300 text-neutral-600';
-        badge.textContent = '👁️ Visor';
-      }
-
-      // Apply wallpaper background to chalkboard workspace
-      const currentWallpaper = boardState.wallpaper || 'editorial';
-      const m = document.getElementById('board-main');
-      
-      // Reset classes
-      THEME_OPTIONS.forEach(opt => m.classList.remove(opt.bgClass));
-      const opt = THEME_OPTIONS.find(t => t.id === currentWallpaper) || THEME_OPTIONS[0];
-      m.classList.add(opt.bgClass);
-
-      // Settle watermark branding contrast
-      const inkCol = opt.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(26, 21, 18, 0.14)';
-      document.getElementById('whiteboard-watermark').style.color = inkCol;
-    }
-
-    function renderWhiteboardCards() {
-      const container = document.getElementById('notes-viewport');
-      container.innerHTML = '';
-
-      if (layoutMode === 'grid') {
-        container.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 relative select-none w-full";
-      } else {
-        container.className = "relative select-none w-full min-h-[140vh]";
-      }
-
-      const notesList = Object.values(boardState?.notes || {});
-
-      // Prune expired
-      const validNotes = notesList.filter(note => {
-        const createdMs = new Date(note.createdAt).getTime();
-        return createdMs + EXPIRY_MS > Date.now();
-      });
-
-      if (validNotes.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full py-20 text-center select-none flex flex-col items-center justify-center gap-3">
-            <i data-lucide="inbox" class="w-12 h-12 text-neutral-300 opacity-80"></i>
-            <h4 class="font-serif font-bold text-lg text-neutral-450 italic">Pizarra vacía temporal</h4>
-            <p class="text-xs text-neutral-400 max-w-xs leading-normal">
-              ${role === 'editor' ? 'Presiona el botón flotante inferior para publicar tu primera nota con links o imágenes.' : 'Esperando que un editor agregue notas temporales.'}
-            </p>
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      // Sort criteria
-      if (layoutMode === 'grid') {
-        // latest first for standard clean automatic grid flow
-        validNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      } else {
-         // arrange by zIndex for perfect overlay Whiteboard depths
-         validNotes.sort((a, b) => (a.zIndex || 10) - (b.zIndex || 10));
-      }
-
-      validNotes.forEach((note) => {
-        const cardEl = buildWhiteboardNoteCard(note);
-        container.appendChild(cardEl);
-      });
-
-      // Rerender icons trigger
-      lucide.createIcons();
-    }
-
-    function buildWhiteboardNoteCard(note) {
-      const cardStyle = `background-color: ${note.color.bg}; border-color: ${note.color.border}; color: ${note.color.text};`;
-
-      // Expiry timer
-      const createdTime = new Date(note.createdAt).getTime();
-      const diff = (createdTime + EXPIRY_MS) - Date.now();
-      let timeLeftText = 'Expirando';
-      if (diff > 0) {
-        const h = Math.floor(diff / (1000 * 60 * 60));
-        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        timeLeftText = h > 0 ? `${h}h ${m}m` : `${m}m`;
-      }
-
-      const outerCard = document.createElement('div');
-      outerCard.id = `card-${note.id}`;
-      outerCard.style.cssText = cardStyle;
-      outerCard.className = `post-card card-enter flex flex-col border rounded-xl overflow-hidden shadow-xs hover:shadow-lg transition-all duration-200 ${
-        layoutMode === 'canvas' ? 'absolute w-64 md:w-72 lg:w-80 cursor-grab active:cursor-grabbing select-none' : 'w-full'
-      }`;
-
-      if (layoutMode === 'canvas') {
-        outerCard.style.left = `${note.x}%`;
-        outerCard.style.top = `${note.y}%`;
-        outerCard.style.zIndex = note.zIndex || 10;
-
-        // Init dragging module
-        bindWhiteboardCardDragging(outerCard, note.id);
-      }
-
-      // Check if image element present
-      const imageMarkup = note.imageUrl ? `
-        <div class="relative overflow-hidden group/image border-b border-black/5 bg-black/5 flex justify-center items-center h-48 select-none">
-          <img src="${note.imageUrl}" alt="P2P whiteboard asset" class="w-full h-full object-cover pointer-events-none" referrerPolicy="no-referrer">
-          <div class="absolute inset-0 bg-black/25 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity cursor-zoom-in" onclick="openZoomImageViewer('${note.imageUrl}')">
-            <span class="text-white text-[11px] font-semibold flex items-center gap-1.5 bg-black/60 px-2.5 py-1.5 rounded-full backdrop-blur-xs">
-              <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i> Ampliar
-            </span>
-          </div>
-        </div>
-      ` : '';
-
-      // Comments list bundle render
-      const commentItemsMarkup = (note.comments || []).map(comm => `
-        <div class="bg-white/70 p-2 rounded-lg border border-black/[0.04] text-[11px] shadow-2xs">
-          <div class="flex justify-between items-center text-[8px] font-bold uppercase opacity-55 mb-0.5">
-            <span>${comm.username}</span>
-            <span>${new Date(comm.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <p class="leading-tight text-neutral-800 break-all">${comm.content}</p>
-        </div>
-      `).join('');
-
-      outerCard.innerHTML = `
-        <!-- Top Metadata tag -->
-        <div class="px-3.5 py-2 flex items-center justify-between border-b border-black/5 bg-black/[0.015] select-none">
-          <span class="text-[9px] font-bold tracking-wider uppercase opacity-60 truncate max-w-[60%]">
-            ✍️ ${note.username}
-          </span>
-          <span class="flex items-center gap-1 text-[9px] font-mono font-semibold opacity-50">
-            <i data-lucide="clock" class="w-3 h-3"></i> -${timeLeftText}
-          </span>
-        </div>
-
-        <!-- Attached Image inside -->
-        ${imageMarkup}
-
-        <!-- Main Content body text -->
-        <div class="p-4 flex-1 select-text">
-          ${note.title ? `<h4 class="font-serif font-bold text-sm leading-tight mb-1.5">${note.title}</h4>` : ''}
-          ${note.content ? `<p class="text-xs leading-relaxed opacity-95">${note.content}</p>` : ''}
-        </div>
-
-        <!-- Footer Control tags -->
-        <div class="px-3 py-1.5 border-t border-black/5 flex items-center justify-between bg-black/[0.005] select-none">
-          <div class="flex items-center gap-1">
-            <button onclick="likeNoteWhiteboard('${note.id}')" class="flex items-center gap-1 px-2 py-1 rounded-md text-xs hover:bg-black/5 transition-colors">
-              <i data-lucide="heart" class="w-3.5 h-3.5 ${note.likes > 0 ? 'fill-rose-500 text-rose-500' : 'opacity-60'}"></i>
-              <span class="font-mono font-bold text-[11px]">${note.likes || 0}</span>
-            </button>
-            <button onclick="toggleCardCommentsDrawer('${note.id}')" class="flex items-center gap-1 px-2 py-1 rounded-md text-xs hover:bg-black/5 transition-colors">
-              <i data-lucide="message-square" class="w-3.5 h-3.5 opacity-60"></i>
-              <span class="font-mono font-bold text-[11px]">${(note.comments || []).length}</span>
-            </button>
-          </div>
-
-          ${role === 'editor' ? `
-            <div class="flex items-center gap-1 opacity-35 hover:opacity-100 transition-opacity">
-              <button onclick="editWhiteboardNote('${note.id}')" class="p-1 hover:bg-black/5 rounded hover:text-blue-600"><i data-lucide="edit-3" class="w-3 h-3"></i></button>
-              <button onclick="deleteWhiteboardNote('${note.id}')" class="p-1 hover:bg-black/5 rounded hover:text-rose-600"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Comments Expandable Panel drawer -->
-        <div id="comments-box-${note.id}" class="hidden border-t border-black/5 bg-black/[0.015]">
-          <div id="comments-list-${note.id}" class="max-h-36 overflow-y-auto px-3.5 py-2 flex flex-col gap-1.5 border-b border-black/5">
-            ${commentItemsMarkup || '<p class="text-[10px] italic opacity-40 py-1.5 text-center select-none">Sin comentarios.</p>'}
-          </div>
-          <form onsubmit="postCommentToWhiteboardCard(event, '${note.id}')" class="p-1.5 flex gap-1.5">
-            <input
-              type="text"
-              required
-              maxlength="150"
-              placeholder="Añadir comentario..."
-              class="flex-1 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[11px] outline-hidden focus:border-brand text-ink"
-            />
-            <button type="submit" class="p-1 px-2 bg-ink hover:bg-brand text-white rounded-md flex items-center justify-center transition-colors">
-              <i data-lucide="send" class="w-3 h-3"></i>
-            </button>
-          </form>
-        </div>
-      `;
-
-      return outerCard;
-    }
-
-    // Canvas Free drag physics engine
-    function bindWhiteboardCardDragging(cardEl, cardId) {
-      let isDragging = false;
-      let startX, startY;
-      let initLeftPct, initTopPct;
-
-      cardEl.addEventListener('pointerdown', (e) => {
-        if (role !== 'editor') return;
-        if (e.target.closest('button, input, textarea, form, a, .group\\/image')) return;
-
-        isDragging = true;
-        cardEl.classList.add('dragging');
-        cardEl.setPointerCapture(e.pointerId);
-
-        highestZ++;
-        cardEl.style.zIndex = highestZ;
-
-        const parent = cardEl.parentElement;
-        const parentRect = parent.getBoundingClientRect();
-        const cardRect = cardEl.getBoundingClientRect();
-
-        initLeftPct = parseFloat(cardEl.style.left) || 0;
-        initTopPct = parseFloat(cardEl.style.top) || 0;
-
-        startX = e.clientX;
-        startY = e.clientY;
-
-        e.preventDefault();
-      });
-
-      cardEl.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-
-        const parent = cardEl.parentElement;
-        const parentRect = parent.getBoundingClientRect();
-        const cardRect = cardEl.getBoundingClientRect();
-
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-
-        // Convert deltapx coordinate to master percentage layout
-        const pctX = (deltaX / parentRect.width) * 100;
-        const pctY = (deltaY / parentRect.height) * 100;
-
-        let leftPercentage = initLeftPct + pctX;
-        let topPercentage = initTopPct + pctY;
-
-        // Constrain bounding boxes strictly
-        const limitX = 100 - (cardRect.width / parentRect.width) * 100;
-        const limitY = 100 - (cardRect.height / parentRect.height) * 100;
-
-        leftPercentage = Math.max(0, Math.min(leftPercentage, limitX));
-        topPercentage = Math.max(0, Math.min(topPercentage, limitY));
-
-        cardEl.style.left = `${leftPercentage}%`;
-        cardEl.style.top = `${topPercentage}%`;
-      });
-
-      cardEl.addEventListener('pointerup', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        cardEl.classList.remove('dragging');
-        cardEl.releasePointerCapture(e.pointerId);
-
-        const leftPct = parseFloat(cardEl.style.left) || 0;
-        const topPct = parseFloat(cardEl.style.top) || 0;
-
-        dispatchWhiteboardAction('MOVE_NOTE', {
-          id: cardId,
-          x: leftPct,
-          y: topPct,
-          zIndex: highestZ
-        });
-      });
-    }
-
-
-    // ✦ CARD MUTATIONS IMPLEMENTATIONS
-    function likeNoteWhiteboard(id) {
-      dispatchWhiteboardAction('LIKE_NOTE', { id });
-    }
-
-    function toggleCardCommentsDrawer(id) {
-      const panel = document.getElementById(`comments-box-${id}`);
-      panel.classList.toggle('hidden');
-    }
-
-    function postCommentToWhiteboardCard(e, cardId) {
-      e.preventDefault();
-      const input = e.target.querySelector('input');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const commentPayload = {
-        id: `comm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        username: userNickname,
-        content: text,
-        createdAt: new Date().toISOString()
-      };
-
-      dispatchWhiteboardAction('ADD_COMMENT', { cardId, comment: commentPayload });
-      input.value = '';
-    }
-
-    function editWhiteboardNote(id) {
-      const note = boardState?.notes[id];
-      if (!note) return;
-      
-      editingNoteId = id;
-      openNoteEditor(note);
-    }
-
-    function deleteWhiteboardNote(id) {
-      if (confirm('¿Seguro que deseas eliminar definitivamente esta tarjeta en la red?')) {
-        dispatchWhiteboardAction('DELETE_NOTE', { id });
-      }
-    }
-
-    function pruneExpiredElementsLive() {
-      if (!boardState) return;
-
-      let expiredFound = false;
-      const nextNotes = { ...boardState.notes };
-
-      Object.keys(nextNotes).forEach(id => {
-        const createdMs = new Date(nextNotes[id].createdAt).getTime();
-        if (createdMs + EXPIRY_MS <= Date.now()) {
-          delete nextNotes[id];
-          expiredFound = true;
-        }
-      });
-
-      if (expiredFound) {
-        boardState = {
-          ...boardState,
-          notes: nextNotes
-        };
-        
-        if (peerStatus === 'hosting') {
-          updateAndSyncBoardState(boardState);
-          broadcastWHITEBOARDStateAcrossNodes(boardState);
-        }
-        renderWhiteboardCards();
-      }
-    }
-
-
-    // ✦ NOTE EDITOR DIALOG MODULES
-    function openNoteEditor(noteObj = null) {
-      document.getElementById('note-modal').classList.remove('hidden');
-
-      // Colors picker render
-      renderNoteColorsPicker();
-
-      const selectArea = document.getElementById('image-upload-wrapper');
-      
-      if (noteObj) {
-        // Edit mode
-        document.getElementById('note-modal-headline').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-brand"></i> Guardar edicin';
-        document.getElementById('note-submit-btn').textContent = 'Guardar Cambios';
-        document.getElementById('note-author-input').value = noteObj.username;
-        document.getElementById('note-title-input').value = noteObj.title || '';
-        document.getElementById('note-message-input').value = noteObj.content || '';
-        
-        // Select color swatch match
-        activeSelectedColor = CARD_COLORS.find(c => c.name === noteObj.color.name) || CARD_COLORS[0];
-        updateSelectedColorSwatches();
-
-        loadedImageBase64 = noteObj.imageUrl || null;
-        renderImageUploadOrPreviewContent(selectArea);
-      } else {
-        // New post mode
-        document.getElementById('note-modal-headline').innerHTML = '<i data-lucide="sparkles" class="w-5 h-5 text-brand"></i> Nueva nota temporal';
-        document.getElementById('note-submit-btn').textContent = 'Publicar nota';
-        document.getElementById('note-author-input').value = userNickname;
-        document.getElementById('note-title-input').value = '';
-        document.getElementById('note-message-input').value = '';
-        
-        activeSelectedColor = CARD_COLORS[0];
-        updateSelectedColorSwatches();
-
-        loadedImageBase64 = null;
-        renderImageUploadOrPreviewContent(selectArea);
-      }
-
-      document.getElementById('note-char-counter').textContent = `${document.getElementById('note-message-input').value.length}/1000`;
-      lucide.createIcons();
-    }
-
-    function closeNoteEditor() {
-      document.getElementById('note-modal').classList.add('hidden');
-      editingNoteId = null;
-      loadedImageBase64 = null;
-    }
-
-    function renderNoteColorsPicker() {
-      const p = document.getElementById('note-color-picker');
-      p.innerHTML = '';
-
-      CARD_COLORS.forEach((color, idx) => {
-        const sw = document.createElement('button');
-        sw.type = 'button';
-        sw.id = `color-bubble-${color.name}`;
-        sw.onclick = () => {
-          activeSelectedColor = color;
-          updateSelectedColorSwatches();
-        };
-
-        sw.className = `w-7 h-7 rounded-full border border-black/10 relative flex items-center justify-center transition hover:scale-105`;
-        sw.style.backgroundColor = color.bg;
-        sw.title = color.name;
-        p.appendChild(sw);
-      });
-    }
-
-    function updateSelectedColorSwatches() {
-      CARD_COLORS.forEach(color => {
-         const sw = document.getElementById(`color-bubble-${color.name}`);
-         if (sw) {
-           sw.innerHTML = '';
-           sw.className = `w-7 h-7 rounded-full border border-black/10 relative flex items-center justify-center transition hover:scale-105`;
-           
-           if (color.name === activeSelectedColor.name) {
-             sw.classList.add('ring-2', 'ring-offset-1', 'ring-neutral-900', 'scale-105');
-             const checkMark = color.isDark ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>' : '<i data-lucide="check" class="w-3.5 h-3.5 text-ink"></i>';
-             sw.innerHTML = checkMark;
-           }
-         }
-      });
-      lucide.createIcons();
-    }
-
-    // Dropzone or Preview render states
-    function renderImageUploadOrPreviewContent(container) {
-      if (loadedImageBase64) {
-        container.innerHTML = `
-          <div class="relative rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 max-h-40 flex items-center justify-center self-center">
-            <img src="${loadedImageBase64}" alt="Assets preview link" class="max-h-40 object-contain w-full" referrerPolicy="no-referrer">
-            <button
-              type="button"
-              onclick="removeLoadedImage()"
-              class="absolute top-2 right-2 bg-ink hover:bg-rose-600 text-white rounded-full p-1.5 shadow-md transition"
-              title="Borrar imagen adjunta"
-            >
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        `;
-      } else {
-        container.innerHTML = `
-          <div
-            id="modal-drop-zone"
-            onclick="document.getElementById('modal-file-input').click()"
-            class="border-2 border-dashed border-neutral-200 hover:border-ink rounded-lg p-5 text-center cursor-pointer transition bg-white select-none"
-          >
-            <input type="file" id="modal-file-input" class="hidden" accept="image/*" onchange="processSelectedImageFile(event)">
-            <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-neutral-300"></i>
-            <span class="text-xs font-semibold text-neutral-700 block">Sube una imagen o haz una foto directa</span>
-            <span class="text-[9px] font-mono text-neutral-400 uppercase tracking-widest block mt-0.5">JPEG / PNG / WEBP</span>
-          </div>
-        `;
-
-        const dz = document.getElementById('modal-drop-zone');
-        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.style.borderColor = '#c8541a'; });
-        dz.addEventListener('dragleave', () => { dz.style.borderColor = '#e5e5e5'; });
-        dz.addEventListener('drop', (e) => {
-          e.preventDefault();
-          dz.style.borderColor = '#e5e5e5';
-          const file = e.dataTransfer.files?.[0];
-          if (file) compressAndStoreImageBinary(file);
+      if (!confirm(`¿Cargar el tablero "${snap.board.title}" (${snap.cards.length} notas)?\n\nEsto añadirá las notas al tablero actual. Las notas existentes no se borrarán.`)) return;
+
+      // Restaurar metadatos del tablero si el código coincide
+      if (snap.board.code === boardCode) {
+        boardGun.put({
+          title:     snap.board.title,
+          desc:      snap.board.desc,
+          wallpaper: snap.board.wallpaper || 'editorial'
         });
       }
-      lucide.createIcons();
-    }
 
-    function removeLoadedImage() {
-      loadedImageBase64 = null;
-      renderImageUploadOrPreviewContent(document.getElementById('image-upload-wrapper'));
-    }
-
-    function processSelectedImageFile(e) {
-      const file = e.target.files?.[0];
-      if (file) compressAndStoreImageBinary(file);
-    }
-
-    function compressAndStoreImageBinary(file) {
-      if (!file.type.startsWith('image/')) {
-        alert('Por favor carga un archivo de imagen compatible.');
-        return;
-      }
-
-      // Loader spinner
-      const selectArea = document.getElementById('image-upload-wrapper');
-      selectArea.innerHTML = `
-        <div class="border border-neutral-200 rounded-lg p-6 bg-white flex flex-col items-center justify-center gap-2 select-none">
-          <div class="w-5 h-5 border-2 border-ink border-t-transparent rounded-full animate-spin"></div>
-          <span class="text-[11px] font-medium text-neutral-500">Comprimiendo y optimizando imagen para WebRTC...</span>
-        </div>
-      `;
-
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        const img = new Image();
-        img.onload = function() {
-          const maxWidthHeight = 600;
-          let w = img.width;
-          let h = img.height;
-
-          if (w > h) {
-            if (w > maxWidthHeight) { h = Math.round((h * maxWidthHeight) / w); w = maxWidthHeight; }
-          } else {
-            if (h > maxWidthHeight) { w = Math.round((w * maxWidthHeight) / h); h = maxWidthHeight; }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-
-          // Get highly compressed Base64 to transfer fluidly over standard WebRTC sockets
-          loadedImageBase64 = canvas.toDataURL('image/jpeg', 0.72);
-          renderImageUploadOrPreviewContent(selectArea);
+      // Insertar tarjetas con nuevos IDs para evitar colisiones
+      snap.cards.forEach(card => {
+        // Recalcular expiración desde ahora para que no expire inmediatamente
+        const newId   = uid();
+        const newCard = {
+          ...card,
+          id:        newId,
+          boardCode: boardCode,
+          createdAt: new Date().toISOString()   // resetear timer a 24h desde ahora
         };
-        img.onerror = function() {
-          alert('Error al procesar la imagen.');
-          renderImageUploadOrPreviewContent(selectArea);
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function saveNoteMutation(e) {
-      e.preventDefault();
-
-      const nickForm = document.getElementById('note-author-input').value.trim() || 'Anónimo';
-      const titleForm = document.getElementById('note-title-input').value.trim() || undefined;
-      const messageForm = document.getElementById('note-message-input').value.trim() || undefined;
-
-      if (!messageForm && !loadedImageBase64) {
-        alert('Escribe un texto o carga una imagen en tu nota.');
-        return;
-      }
-
-      // Save local memory preference
-      userNickname = nickForm;
-      localStorage.setItem('board_nick', nickForm);
-      document.getElementById('hdr-nick-text').textContent = nickForm;
-
-      if (editingNoteId) {
-        // Edit mode
-        const original = boardState.notes[editingNoteId];
-        if (original) {
-          const updatedCard = {
-            ...original,
-            username: nickForm,
-            title: titleForm,
-            content: messageForm,
-            color: activeSelectedColor,
-            imageUrl: loadedImageBase64 || original.imageUrl
-          };
-
-          dispatchWhiteboardAction('MUTATE_NOTE', updatedCard);
-        }
-      } else {
-        // Insertion mode
-        highestZ++;
-        const targetId = `note_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-        const insertedCard = {
-          id: targetId,
-          username: nickForm,
-          title: titleForm,
-          content: messageForm,
-          color: activeSelectedColor,
-          imageUrl: loadedImageBase64 || undefined,
-          likes: 0,
-          comments: [],
-          x: Math.random() * 40 + 20, // canvas responsive percent positions
-          y: Math.random() * 30 + 15,
-          zIndex: highestZ,
-          createdAt: new Date().toISOString()
-        };
-
-        dispatchWhiteboardAction('MUTATE_NOTE', insertedCard);
-      }
-
-      closeNoteEditor();
-    }
-
-
-    // ✦ NICKNAME DYNAMIC SETTERS
-    function openNicknamePrompt() {
-      document.getElementById('nickname-modal').classList.remove('hidden');
-      document.getElementById('nickname-modal-input').value = userNickname;
-    }
-
-    function closeNicknamePrompt() {
-      document.getElementById('nickname-modal').classList.add('hidden');
-    }
-
-    function saveNicknameMutation(e) {
-      e.preventDefault();
-      const val = document.getElementById('nickname-modal-input').value.trim();
-      if (!val) return;
-
-      userNickname = val;
-      localStorage.setItem('board_nick', val);
-      document.getElementById('hdr-nick-text').textContent = val;
-      closeNicknamePrompt();
-    }
-
-
-    // ✦ SWITCH LAYOUT: GRID VS CANVAS CANVAS-LIBRE
-    function switchLayout(mode) {
-      layoutMode = mode;
-
-      const gridBtn = document.getElementById('layout-grid-btn');
-      const canvasBtn = document.getElementById('layout-canvas-btn');
-
-      if (mode === 'grid') {
-        gridBtn.classList.add('bg-white', 'text-neutral-900', 'shadow-xs');
-        gridBtn.classList.remove('text-neutral-400');
-        canvasBtn.classList.remove('bg-white', 'text-neutral-900', 'shadow-xs');
-        canvasBtn.classList.add('text-neutral-400');
-      } else {
-        canvasBtn.classList.add('bg-white', 'text-neutral-900', 'shadow-xs');
-        canvasBtn.classList.remove('text-neutral-400');
-        gridBtn.classList.remove('bg-white', 'text-neutral-900', 'shadow-xs');
-        gridBtn.classList.add('text-neutral-400');
-
-        // Drag canvas help instructions popup once
-        const seen = localStorage.getItem('drag_helper_seen');
-        if (!seen && role === 'editor') {
-          alert('¡Modo Canvas Libre Activado! Ahora, como editor, puedes arrastrar con el puntero del mouse o con el dedo para organizar libremente cualquiera de las notas adhesivas.');
-          localStorage.setItem('drag_helper_seen', 'true');
-        }
-      }
-
-      renderWhiteboardCards();
-    }
-
-
-    // ✦ SETTINGS & WALPAPER PICKERS
-    function toggleSettingsMenu(e) {
-      e.stopPropagation();
-      document.getElementById('settings-menu').classList.toggle('hidden');
-    }
-
-    document.addEventListener('click', () => {
-      document.getElementById('settings-menu').classList.add('hidden');
-    });
-
-    function renderSettingsDropdown() {
-      const container = document.getElementById('settings-theme-list');
-      container.innerHTML = '';
-
-      THEME_OPTIONS.forEach(theme => {
-        const isCurrent = boardState?.wallpaper === theme.id;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.disabled = role !== 'editor';
-        btn.onclick = () => selectSettingsThemeOption(theme.id);
-        
-        btn.className = `w-full text-left px-3 py-1.5 text-xs rounded-md transition flex items-center justify-between ${
-          isCurrent ? 'bg-ink text-white font-semibold' : 'text-neutral-700 hover:bg-neutral-100'
-        } ${role !== 'editor' ? 'opacity-50 cursor-not-allowed' : ''}`;
-
-        btn.innerHTML = `
-          <span>${theme.name}</span>
-          ${isCurrent ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}
-        `;
-        container.appendChild(btn);
+        cardsGun.get(newId).put(newCard);
+        // Optimistic local update
+        let color = newCard.color;
+        if (typeof color === 'string') { try { color = JSON.parse(color); } catch(e){ color=COLORS[0]; } }
+        let comments = newCard.comments;
+        if (typeof comments === 'string') { try { comments = JSON.parse(comments); } catch(e){ comments={}; } }
+        cards[newId] = {...newCard, color, comments};
       });
 
-      // Show/hide reclaim control trigger based on matching roles
-      const cp = document.getElementById('reclaim-control-panel');
-      if (role === 'editor') {
-        cp.classList.remove('hidden');
-      } else {
-        cp.classList.add('hidden');
-      }
+      renderCards();
+      showSync(`${snap.cards.length} notas cargadas ✓`);
+    } catch(err) {
+      console.error(err);
+      alert('Error al leer el archivo: ' + err.message);
     }
+    this.value = ''; // reset para poder volver a cargar el mismo fichero
+  };
+  reader.readAsText(file);
+});
 
-    function selectSettingsThemeOption(themeId) {
-      if (role !== 'editor') return;
+// ═══════════════════════════════════════════════════════════
+// FULLSCREEN
+// ═══════════════════════════════════════════════════════════
+document.getElementById('fs-btn')?.addEventListener('click', () => {
+  const el=document.getElementById('app');
+  if(!document.fullscreenElement) el.requestFullscreen?.().catch(()=>{});
+  else document.exitFullscreen?.();
+});
+document.addEventListener('fullscreenchange', () => {
+  const icon=document.getElementById('fs-icon'); if(!icon) return;
+  icon.innerHTML=document.fullscreenElement
+    ?'<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
+    :'<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+});
 
-      if (peerStatus === 'hosting') {
-        const updated = {
-          ...boardState,
-          wallpaper: themeId
-        };
-        updateAndSyncBoardState(updated);
-        renderWhiteboardHeader();
-        renderSettingsDropdown();
-        broadcastWHITEBOARDStateAcrossNodes(boardState);
-      } else {
-        alert('Debes ser el Anfitrión (Host) titular para poder cambiar el fondo.');
-      }
-    }
+// FAB & BACK
+document.getElementById('fab')?.addEventListener('click',()=>openPost());
+document.getElementById('back-to-lobby')?.addEventListener('click',e=>{ e.preventDefault(); location.href=location.pathname; });
 
-    // RECLAIM CONTROL MASTER MODULE
-    function reclaimControlAsHost() {
-      if (role !== 'editor') {
-        alert('Acceso denegado. Se necesita rol de editor para asumir control administrativo.');
-        return;
-      }
-
-      if (confirm('¿Quieres asumir el rol de Anfitrión principal de este tablero? Esto te convertirá en el servidor de coordinación P2P local (si el creador original se desconectó).')) {
-        disconnectPeerSocketConnection();
-        const nextUrl = new URL(window.location.href);
-        nextUrl.searchParams.delete('room');
-        window.history.replaceState({}, '', nextUrl.pathname + nextUrl.search);
-        initializeP2PLinkNetwork();
-      }
-    }
-
-
-    // ✦ ZOOM FULL RECEPTOR VISUALS
-    function openZoomImageViewer(url) {
-      document.getElementById('zoom-overlay-img').src = url;
-      document.getElementById('zoom-overlay').classList.remove('hidden');
-      document.getElementById('zoom-overlay').classList.add('flex');
-    }
-
-    function closeZoomImageViewer() {
-      document.getElementById('zoom-overlay').classList.add('hidden');
-      document.getElementById('zoom-overlay').classList.remove('flex');
-    }
-
-    // Keyboard bindings exit zoom
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeZoomImageViewer();
-        closeNoteEditor();
-        closeShareDialog();
-        closeNicknamePrompt();
-      }
-    });
-
-
-    // ✦ PDF EXPORTER SYSTEM
-    async function exportBoardToPdf() {
-      const element = document.getElementById('board-content');
-      if (!element) return;
-
-      const loader = document.getElementById('pdf-exporting-overlay');
-      loader.classList.remove('hidden');
-
-      // Unhide comment boxes and hide input forms to capture comments in the PDF
-      const hiddenBoxes = [];
-      const hiddenForms = [];
-
-      document.querySelectorAll('[id^="comments-box-"]').forEach((box) => {
-        if (box.classList.contains('hidden')) {
-          box.classList.remove('hidden');
-          hiddenBoxes.push(box);
-        }
-        const form = box.querySelector('form');
-        if (form && !form.classList.contains('hidden')) {
-          form.classList.add('hidden');
-          hiddenForms.push(form);
-        }
-      });
-
-      try {
-        // Set standard view offset top scroll
-        window.scrollTo(0, 0);
-
-        const canvas = await html2canvas(element, {
-          scale: 2, // crisp layout
-          useCORS: true,
-          backgroundColor: '#faf7f2',
-          windowWidth: element.scrollWidth,
-          windowHeight: element.scrollHeight,
-          x: 0,
-          y: 0
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [canvas.width, canvas.height]
-        });
-
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`Tablero_GmedranoTIC_${boardCode || 'export'}.pdf`);
-      } catch (err) {
-        console.error(err);
-        alert('Error al generar la captura PDF.');
-      } finally {
-        // Restore previous states of comments boxes and forms
-        hiddenBoxes.forEach((box) => box.classList.add('hidden'));
-        hiddenForms.forEach((form) => form.classList.remove('hidden'));
-
-        loader.classList.add('hidden');
-      }
-    }
-
-
-    // ✦ FULLSCREEN MODE CONTROLLER
-    function toggleScreenMode() {
-      const el = document.documentElement;
-      const icon = document.getElementById('fs-icon');
-
-      if (!document.fullscreenElement) {
-        el.requestFullscreen().then(() => {
-          icon.setAttribute('data-lucide', 'minimize-2');
-          lucide.createIcons();
-        }).catch(() => {});
-      } else {
-        document.exitFullscreen().then(() => {
-          icon.setAttribute('data-lucide', 'maximize-2');
-          lucide.createIcons();
-        }).catch(() => {});
-      }
-    }
-
-
-    // ✦ SHARE MODAL CONTROLLER
-    function openShareDialog() {
-      document.getElementById('share-modal').classList.remove('hidden');
-      switchShareModalTab('viewer');
-    }
-
-    function closeShareDialog() {
-      document.getElementById('share-modal').classList.add('hidden');
-    }
-
-    function switchShareModalTab(tabType) {
-      activeShareTab = tabType;
-
-      const viewBtn = document.getElementById('share-tab-viewer-btn');
-      const editBtn = document.getElementById('share-tab-editor-btn');
-
-      const label = document.getElementById('share-link-label');
-      const input = document.getElementById('share-link-input');
-      const banner = document.getElementById('share-warn-banner');
-      const text = document.getElementById('share-warn-text');
-
-      // Base link derived dynamically
-      const origin = `${window.location.origin}${window.location.pathname}`;
-      const codeBadge = document.getElementById('share-modal-codebadge');
-      codeBadge.textContent = boardCode;
-
-      if (tabType === 'viewer') {
-        viewBtn.className = 'py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 border-ink text-ink';
-        editBtn.className = 'py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-600';
-
-        label.textContent = 'Enlace de Solo Lectura';
-        const link = `${origin}?code=${boardCode}&role=viewer`;
-        input.value = link;
-
-        banner.className = 'p-3 border rounded-lg flex items-start gap-2 text-xs bg-emerald-50 border-emerald-200 text-emerald-850';
-        text.textContent = 'Los visitantes con este enlace podrán ver notas, comentarios y dar "me gustas" en tiempo real, pero no realizar modificaciones estructurales.';
-      } else {
-        editBtn.className = 'py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 border-ink text-ink';
-        viewBtn.className = 'py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 border-transparent text-neutral-400 hover:text-neutral-600';
-
-        label.textContent = 'Enlace de Edición Completo';
-        const link = `${origin}?code=${boardCode}&role=editor&key=${boardState?.editKey || editKey}`;
-        input.value = link;
-
-        banner.className = 'p-3 border rounded-lg flex items-start gap-2 text-xs bg-amber-50 border-amber-200 text-amber-850';
-        text.textContent = '¡Cuidado! Este enlace otorga permisos de edición completo. Cualquiera con este vínculo podrá crear, editar, mover y borrar cualquier nota adhesiva del panel.';
-      }
-
-      // Generate QR code URL using online API
-      const qrImg = document.getElementById('share-qr-img');
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(input.value)}`;
-
-      // Reset copy button status
-      const cpBtn = document.getElementById('share-copy-btn');
-      cpBtn.className = 'px-4 py-2 bg-ink hover:bg-brand text-white text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1.5';
-      cpBtn.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar';
-
-      lucide.createIcons();
-    }
-
-    function copyShareLink() {
-      const val = document.getElementById('share-link-input').value;
-      navigator.clipboard.writeText(val).then(() => {
-        const btn = document.getElementById('share-copy-btn');
-        btn.className = 'px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1.5 transition-colors duration-150';
-        btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> ¡Copiado!';
-      });
-    }
-  </script>
+// ═══════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════
+init();
+</script>
 </body>
 </html>
