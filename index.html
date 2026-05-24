@@ -7,11 +7,14 @@
 <meta name="description" content="Tablero colaborativo temporal · @GmedranoTIC · 24h"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
 <style>
-:root{--ink:#1a1512;--ink2:#3d3630;--paper:#faf7f2;--paper2:#f2ede4;--accent:#c8541a;--gold:#d4a843;--teal:#2a7c6f;--border:rgba(26,21,18,0.12);--shadow:0 4px 24px rgba(26,21,18,0.10);}
+:root{
+  --ink:#1a1512;--ink2:#3d3630;--paper:#faf7f2;--paper2:#f2ede4;
+  --accent:#c8541a;--gold:#d4a843;--teal:#2a7c6f;
+  --border:rgba(26,21,18,0.12);--shadow:0 4px 24px rgba(26,21,18,0.10);
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
 body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;overflow-x:hidden;}
@@ -37,6 +40,7 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 .btn-primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:var(--ink);color:var(--paper);border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:2px;}
 .btn-primary:hover{background:var(--accent);}
 .btn-primary svg{width:14px;height:14px;}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
 .theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:5px;}
 @media(max-width:480px){.theme-grid{grid-template-columns:repeat(3,1fr);}}
 .theme-btn{height:50px;border:2px solid transparent;cursor:pointer;position:relative;overflow:hidden;transition:all .2s;display:flex;flex-direction:column;justify-content:flex-end;padding:4px;}
@@ -61,7 +65,7 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 /* ── APP ── */
 #app{display:none;flex-direction:column;height:100vh;overflow:hidden;}
 #board-header{background:rgba(250,247,242,.97);border-bottom:1px solid var(--border);padding:0 14px;display:flex;align-items:center;gap:9px;min-height:54px;flex-shrink:0;z-index:100;backdrop-filter:blur(12px);flex-wrap:wrap;}
-.hdr-logo{display:flex;align-items:center;gap:7px;text-decoration:none;flex-shrink:0;}
+.hdr-logo{display:flex;align-items:center;gap:7px;text-decoration:none;flex-shrink:0;cursor:pointer;}
 .hdr-logo-svg{width:28px;height:28px;}
 .hdr-title-wrap{display:flex;flex-direction:column;}
 .hdr-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;font-style:italic;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:185px;}
@@ -84,6 +88,11 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 .layout-toggle button.active{background:var(--ink);color:var(--paper);}
 .layout-toggle button svg{width:12px;height:12px;}
 
+/* PEERS indicator */
+.peers-dot{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'DM Mono',monospace;opacity:.7;white-space:nowrap;}
+.peers-dot .pdot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0;}
+.peers-dot .pdot.offline{background:#f87171;}
+
 /* STATUS */
 #board-status{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 18px;font-size:12px;border-bottom:1px solid var(--border);z-index:50;flex-shrink:0;}
 #board-status[data-type=loading]{background:#f0f9ff;color:#075985;}
@@ -95,17 +104,12 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 /* BOARD */
 #board-main{flex:1;overflow:auto;position:relative;transition:background .4s;}
 #board-content{min-height:100%;padding:20px;position:relative;}
-
-/* WATERMARK */
 #board-main::after{
-  content:'@GmedranoTIC';
-  position:fixed;bottom:30px;right:30px;
+  content:'@GmedranoTIC';position:fixed;bottom:30px;right:30px;
   font-family:'Playfair Display',serif;font-size:clamp(22px,3.5vw,42px);
-  font-weight:700;font-style:italic;
-  color:rgba(200,84,26,0.07);
+  font-weight:700;font-style:italic;color:rgba(200,84,26,0.07);
   pointer-events:none;z-index:0;white-space:nowrap;user-select:none;
-  transform:rotate(-8deg);
-  letter-spacing:.02em;
+  transform:rotate(-8deg);letter-spacing:.02em;
 }
 
 /* CARDS */
@@ -239,7 +243,7 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 #pdf-loading .spin{width:28px;height:28px;border-width:3px;}
 #pdf-loading p{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.65;}
 
-/* SYNC indicator */
+/* SYNC TOAST */
 #sync-pill{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;padding:5px 13px;background:var(--ink);color:var(--paper);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;z-index:80;border-radius:2px;box-shadow:var(--shadow);pointer-events:none;}
 #sync-pill.visible{display:flex;}
 #sync-pill .sdot{width:6px;height:6px;border-radius:50%;background:#4ade80;}
@@ -267,53 +271,39 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
     <div class="logo-block">
       <div class="pill">
         <svg viewBox="0 0 16 16" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M5 8l2 2 4-4"/></svg>
-        Colaboración P2P · Sin servidor · 24h
+        Colaboración P2P · WebRTC · 24h
       </div>
-      <!-- Logo SVG mejorado -->
-      <svg class="logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg class="logo-svg" viewBox="0 0 100 100" fill="none">
         <rect x="2" y="2" width="96" height="96" rx="18" fill="#1a1512"/>
-        <!-- tablero principal -->
         <rect x="10" y="14" width="80" height="58" rx="5" fill="#faf7f2" opacity=".97"/>
-        <!-- barra superior -->
         <rect x="10" y="14" width="80" height="10" rx="5" fill="#c8541a"/>
         <rect x="10" y="19" width="80" height="5" fill="#c8541a"/>
-        <!-- botones barra -->
         <circle cx="19" cy="19" r="2.5" fill="#fff" opacity=".5"/>
         <circle cx="27" cy="19" r="2.5" fill="#fff" opacity=".35"/>
         <circle cx="35" cy="19" r="2.5" fill="#fff" opacity=".25"/>
-        <!-- tarjetas -->
         <rect x="15" y="29" width="28" height="19" rx="3" fill="#e8762a" opacity=".92"/>
         <rect x="17" y="32" width="18" height="2" rx="1" fill="#fff" opacity=".85"/>
         <rect x="17" y="36" width="13" height="1.5" rx=".75" fill="#fff" opacity=".5"/>
         <rect x="17" y="39.5" width="15" height="1.5" rx=".75" fill="#fff" opacity=".4"/>
-        <rect x="17" y="43" width="10" height="1.5" rx=".75" fill="#fff" opacity=".3"/>
         <rect x="47" y="29" width="28" height="19" rx="3" fill="#d4a843" opacity=".92"/>
         <rect x="49" y="32" width="18" height="2" rx="1" fill="#fff" opacity=".85"/>
         <rect x="49" y="36" width="12" height="1.5" rx=".75" fill="#fff" opacity=".5"/>
-        <rect x="49" y="39.5" width="16" height="1.5" rx=".75" fill="#fff" opacity=".4"/>
         <rect x="15" y="52" width="28" height="16" rx="3" fill="#2a7c6f" opacity=".88"/>
         <rect x="17" y="55" width="16" height="2" rx="1" fill="#fff" opacity=".8"/>
-        <rect x="17" y="59" width="12" height="1.5" rx=".75" fill="#fff" opacity=".45"/>
         <rect x="47" y="52" width="28" height="16" rx="3" fill="#c8541a" opacity=".72"/>
         <rect x="49" y="55" width="14" height="2" rx="1" fill="#fff" opacity=".75"/>
-        <rect x="49" y="59" width="11" height="1.5" rx=".75" fill="#fff" opacity=".4"/>
-        <!-- imagen en tarjeta -->
-        <rect x="79" y="29" width="7" height="5" rx="1" fill="#faf7f2" opacity=".6"/>
-        <!-- patas soporte -->
-        <rect x="34" y="72" width="5" height="11" rx="2.5" fill="#1a1512" opacity=".22"/>
-        <rect x="61" y="72" width="5" height="11" rx="2.5" fill="#1a1512" opacity=".22"/>
-        <rect x="24" y="82" width="52" height="4" rx="2" fill="#1a1512" opacity=".13"/>
-        <!-- conexión wifi/share icono arriba derecha -->
         <circle cx="80" cy="19" r="2" fill="#fff" opacity=".8"/>
         <path d="M76.5 16 Q80 13 83.5 16" stroke="#fff" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".6"/>
         <path d="M74.5 14 Q80 10 85.5 14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".35"/>
+        <rect x="34" y="72" width="5" height="11" rx="2.5" fill="#1a1512" opacity=".22"/>
+        <rect x="61" y="72" width="5" height="11" rx="2.5" fill="#1a1512" opacity=".22"/>
+        <rect x="19" y="82" width="52" height="3" rx="1.5" fill="#1a1512" opacity=".13"/>
       </svg>
       <div class="logo-title">Comparte con <span>@GmedranoTIC</span></div>
-      <div class="logo-sub">Tablero colaborativo visual · Expira en 24 horas · P2P</div>
+      <div class="logo-sub">Tablero colaborativo visual · Expira en 24 horas · WebRTC P2P</div>
     </div>
 
     <div class="lobby-grid">
-      <!-- CREAR -->
       <div class="lobby-card">
         <h2>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -332,14 +322,14 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
             <label>Fondo</label>
             <div class="theme-grid" id="theme-grid"></div>
           </div>
-          <button class="btn-primary" type="submit">
+          <button class="btn-primary" type="submit" id="create-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            Crear tablero nuevo
+            <span id="create-btn-label">Crear tablero nuevo</span>
+            <div class="spin" id="create-spin" style="display:none;border-color:rgba(255,255,255,.3);border-top-color:#fff;"></div>
           </button>
         </form>
       </div>
 
-      <!-- UNIRSE -->
       <div class="lobby-card">
         <h2>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -367,7 +357,7 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 <!-- ═══════════ APP ═══════════ -->
 <div id="app">
   <header id="board-header">
-    <a class="hdr-logo" href="#" id="back-to-lobby">
+    <div class="hdr-logo" id="back-to-lobby">
       <svg class="hdr-logo-svg" viewBox="0 0 100 100" fill="none">
         <rect x="2" y="2" width="96" height="96" rx="18" fill="#1a1512"/>
         <rect x="10" y="14" width="80" height="58" rx="5" fill="#faf7f2" opacity=".97"/>
@@ -378,13 +368,17 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
         <rect x="15" y="52" width="28" height="16" rx="3" fill="#2a7c6f" opacity=".85"/>
         <rect x="47" y="52" width="28" height="16" rx="3" fill="#c8541a" opacity=".7"/>
       </svg>
-    </a>
+    </div>
     <div class="hdr-title-wrap">
       <div class="hdr-title" id="hdr-board-title">Tablero</div>
       <div class="hdr-code" id="hdr-board-code">Código: ––––––</div>
     </div>
     <div class="hdr-badge editor" id="hdr-badge">Editor</div>
     <div class="hdr-expiry"><span class="dot"></span><span id="expiry-text">24h</span></div>
+    <div class="peers-dot" id="peers-indicator" style="display:none;">
+      <span class="pdot" id="peer-dot"></span>
+      <span id="peer-count">0 conectados</span>
+    </div>
     <div class="hdr-spacer"></div>
     <div class="hdr-btns">
       <div id="theme-picker-wrap" style="display:none;">
@@ -407,15 +401,15 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
           <span>Libre</span>
         </button>
       </div>
-      <button class="hdr-btn" id="pdf-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <button class="hdr-btn" id="pdf-btn" title="Exportar PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span>PDF</span>
       </button>
-      <button class="hdr-btn" id="save-btn" title="Guardar tablero como archivo local">
+      <button class="hdr-btn" id="save-btn" title="Guardar tablero en local">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         <span>Guardar</span>
       </button>
-      <button class="hdr-btn" id="load-btn" title="Cargar tablero desde archivo local">
+      <button class="hdr-btn" id="load-btn" title="Cargar tablero desde archivo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span>Cargar</span>
       </button>
@@ -447,7 +441,6 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
   </button>
 </div>
 
-<!-- SYNC PILL -->
 <div id="sync-pill"><span class="sdot"></span><span id="sync-msg">Sincronizado</span></div>
 
 <!-- POST MODAL -->
@@ -507,11 +500,18 @@ input[type=text]:focus,textarea:focus{border-color:var(--accent);}
 // ═══════════════════════════════════════════════════════════
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-const GUN_PEERS = [
-  'https://gun-manhattan.herokuapp.com/gun',
-  'https://peer.wallie.io/gun',
-  'https://gundb-relay-millie.glitch.me/gun'
-];
+// PeerJS config — igual que muro.html, con TURN servers públicos
+const PEER_CONFIG = {
+  host: '0.peerjs.com', port: 443, path: '/', secure: true, debug: 0,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      { urls: 'turn:standard.relay.metered.ca:80',         username: '9745e21b303bdaea589c29bc', credential: 'UgG56tBqCEGNjzLY' },
+      { urls: 'turn:standard.relay.metered.ca:443?transport=tcp', username: '9745e21b303bdaea589c29bc', credential: 'UgG56tBqCEGNjzLY' }
+    ],
+    iceTransportPolicy: 'all'
+  }
+};
 
 const THEMES = [
   {id:'editorial', name:'Editorial 🪶',  bg:'bg-editorial'},
@@ -534,284 +534,510 @@ const COLORS = [
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-let gun, boardGun, cardsGun;
-let boardCode = null, isEditor = false, editKey = null;
-let board = null, cards = {};
-let layoutMode = 'grid', editingCardId = null;
-let selectedColor = COLORS[0], currentImageBase64 = null;
-let highestZ = 10, _shareTab = 'viewer';
+let boardCode    = null;
+let isEditor     = false;
+let editKey      = null;
+
+// boardState es la fuente de verdad completa — igual que sessionData en muro.html
+let boardState = {
+  code: null, title: '', desc: '', wallpaper: 'editorial',
+  editKey: null, createdAt: null, cards: {}
+};
+
+// PeerJS — arquitectura idéntica a muro.html
+// El editor-host es el "servidor"; los viewers/editores son "guests"
+let peer             = null;   // nuestro Peer local
+let hostConn         = null;   // si somos guest: conexión al host
+let guestConns       = [];     // si somos host: conexiones de guests
+
+let layoutMode        = 'grid';
+let editingCardId     = null;
+let selectedColor     = COLORS[0];
+let currentImageBase64= null;
+let highestZ          = 10;
+let _shareTab         = 'viewer';
 
 // ═══════════════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════════════
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function uid()      { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function makeKey()  { return 'ek' + uid() + uid(); }
+function esc(s='')  { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function fmt(s='')  { return s.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6); }
 function makeCode() {
-  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({length:6}, () => c[Math.floor(Math.random()*c.length)]).join('');
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');
 }
-function makeKey() { return 'ek' + uid() + uid(); }
-function esc(s='') { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-function fmt(s='') { return s.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6); }
 function getRem(createdAt) {
   const diff = new Date(createdAt).getTime() + EXPIRY_MS - Date.now();
-  if(diff <= 0) return {expired:true, text:'Expirado'};
+  if(diff<=0) return {expired:true, text:'Expirado'};
   const h=Math.floor(diff/3600000), m=Math.floor((diff%3600000)/60000);
-  return {expired:false, text: h>0 ? `${h}h ${m}m` : `${m}m`};
+  return {expired:false, text: h>0?`${h}h ${m}m`:`${m}m`};
 }
-function qrUrl(url, s=180) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${s}x${s}&data=${encodeURIComponent(url)}`;
-}
-async function compressImg(file, maxW=720, maxH=720, q=0.73) {
-  return new Promise((res,rej) => {
-    const r = new FileReader(); r.readAsDataURL(file);
-    r.onload = e => {
-      const img = new Image(); img.src = e.target.result;
-      img.onload = () => {
-        let w=img.width, h=img.height;
-        if(w>h) { if(w>maxW){h=Math.round(h*maxW/w);w=maxW;} }
-        else     { if(h>maxH){w=Math.round(w*maxH/h);h=maxH;} }
+function qrUrl(url,s=180){ return `https://api.qrserver.com/v1/create-qr-code/?size=${s}x${s}&data=${encodeURIComponent(url)}`; }
+async function compressImg(file,maxW=720,maxH=720,q=0.73){
+  return new Promise((res,rej)=>{
+    const r=new FileReader(); r.readAsDataURL(file);
+    r.onload=e=>{ const img=new Image(); img.src=e.target.result;
+      img.onload=()=>{ let w=img.width,h=img.height;
+        if(w>h){if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}}else{if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}}
         const c=document.createElement('canvas'); c.width=w; c.height=h;
-        c.getContext('2d').drawImage(img,0,0,w,h);
-        res(c.toDataURL('image/jpeg',q));
-      };
-      img.onerror=rej;
-    };
-    r.onerror=rej;
+        c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',q));
+      }; img.onerror=rej;
+    }; r.onerror=rej;
   });
 }
 
-// ═══════════════════════════════════════════════════════════
-// SYNC PILL
-// ═══════════════════════════════════════════════════════════
-let syncTimer = null;
-function showSync(msg='Sincronizado') {
-  const p=document.getElementById('sync-pill');
-  const m=document.getElementById('sync-msg');
-  if(!p||!m) return;
-  m.textContent=msg; p.classList.add('visible');
-  clearTimeout(syncTimer);
-  syncTimer=setTimeout(()=>p.classList.remove('visible'),2200);
+let syncTimer=null;
+function showSync(msg='Sincronizado'){
+  const p=document.getElementById('sync-pill'), m=document.getElementById('sync-msg');
+  if(!p||!m)return; m.textContent=msg; p.classList.add('visible');
+  clearTimeout(syncTimer); syncTimer=setTimeout(()=>p.classList.remove('visible'),2400);
 }
 
 // ═══════════════════════════════════════════════════════════
-// GUN INIT
+// ROUTER — lee URL params y decide qué mostrar
 // ═══════════════════════════════════════════════════════════
-function initGun() {
-  gun = Gun({ peers: GUN_PEERS, localStorage: true });
-}
+function init(){
+  const p   = new URLSearchParams(location.search);
+  const code= p.get('code'), role=p.get('role'), k=p.get('key');
 
-// ═══════════════════════════════════════════════════════════
-// ROUTER
-// ═══════════════════════════════════════════════════════════
-function init() {
-  initGun();
-  const p = new URLSearchParams(location.search);
-  const code = p.get('code'), role = p.get('role'), k = p.get('key');
-  if(!code) { showLobby(); return; }
+  if(!code){ showLobby(); return; }
   boardCode = fmt(code);
-  if(boardCode.length !== 6) { showLobby(); return; }
+  if(boardCode.length!==6){ showLobby(); return; }
+
   const myKeys = JSON.parse(localStorage.getItem('my_keys')||'{}');
   editKey  = k || myKeys[boardCode] || null;
-  isEditor = !!(role === 'editor' && editKey);
+  isEditor = !!(role==='editor' && editKey);
+
   openBoard();
 }
 
 // ═══════════════════════════════════════════════════════════
 // LOBBY
 // ═══════════════════════════════════════════════════════════
-function showLobby() {
-  document.getElementById('lobby').style.display = 'flex';
-  document.getElementById('app').style.display   = 'none';
+function showLobby(){
+  document.getElementById('lobby').style.display='flex';
+  document.getElementById('app').style.display='none';
+  if(peer){ try{peer.destroy();}catch(e){} peer=null; }
   buildThemeGrid(); buildRecents();
 }
 
-function buildThemeGrid() {
-  const g = document.getElementById('theme-grid'); if(!g) return;
-  let sel = 'editorial'; g.innerHTML = '';
-  THEMES.forEach(t => {
-    const b = document.createElement('button'); b.type = 'button';
-    b.className = 'theme-btn' + (t.id===sel?' active':''); b.dataset.id = t.id;
-    b.innerHTML = `<div class="${t.bg}" style="position:absolute;inset:0;opacity:.82;"></div><span class="theme-label">${t.name}</span>`;
-    b.onclick = () => { g.querySelectorAll('.theme-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); sel=t.id; };
+function buildThemeGrid(){
+  const g=document.getElementById('theme-grid'); if(!g)return;
+  let sel='editorial'; g.innerHTML='';
+  THEMES.forEach(t=>{
+    const b=document.createElement('button'); b.type='button';
+    b.className='theme-btn'+(t.id===sel?' active':''); b.dataset.id=t.id;
+    b.innerHTML=`<div class="${t.bg}" style="position:absolute;inset:0;opacity:.82;"></div><span class="theme-label">${t.name}</span>`;
+    b.onclick=()=>{ g.querySelectorAll('.theme-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); sel=t.id; };
     g.appendChild(b);
   });
-  g._getSel = () => sel;
+  g._getSel=()=>sel;
 }
 
-function buildRecents() {
-  const el = document.getElementById('recents-list'); if(!el) return;
-  const all  = JSON.parse(localStorage.getItem('recent_boards')||'[]');
-  const keys = JSON.parse(localStorage.getItem('my_keys')||'{}');
-  const valid = all.filter(r => !getRem(r.createdAt).expired);
-  if(!valid.length) { el.innerHTML='<p class="empty-recents">Sin tableros recientes.</p>'; return; }
-  el.innerHTML = valid.map(b => `
+function buildRecents(){
+  const el=document.getElementById('recents-list'); if(!el)return;
+  const all =JSON.parse(localStorage.getItem('recent_boards')||'[]');
+  const keys=JSON.parse(localStorage.getItem('my_keys')||'{}');
+  const valid=all.filter(r=>!getRem(r.createdAt).expired);
+  if(!valid.length){ el.innerHTML='<p class="empty-recents">Sin tableros recientes.</p>'; return; }
+  el.innerHTML=valid.map(b=>`
     <div class="recent-item" onclick="openRecent('${b.code}')">
       <div><div class="rname">${esc(b.title)}</div><div class="rcode">Código: <strong>${b.code}</strong> · Expira: ${getRem(b.createdAt).text}</div></div>
       <div class="rbadge ${keys[b.code]?'edit':'view'}">${keys[b.code]?'EDITOR':'VER'}</div>
     </div>`).join('');
 }
 
-window.openRecent = function(code) {
-  const keys = JSON.parse(localStorage.getItem('my_keys')||'{}');
-  const k = keys[code];
-  const u = new URL(location.href);
-  u.searchParams.set('code', code);
-  if(k) { u.searchParams.set('key',k); u.searchParams.set('role','editor'); }
-  else   { u.searchParams.set('role','viewer'); }
-  location.href = u.toString();
+window.openRecent=function(code){
+  const keys=JSON.parse(localStorage.getItem('my_keys')||'{}');
+  const k=keys[code];
+  const u=new URL(location.href);
+  u.searchParams.set('code',code);
+  if(k){ u.searchParams.set('key',k); u.searchParams.set('role','editor'); }
+  else  { u.searchParams.set('role','viewer'); }
+  location.href=u.toString();
 };
 
-function saveRecent(b) {
-  let r = JSON.parse(localStorage.getItem('recent_boards')||'[]');
-  r = [{code:b.code,title:b.title,createdAt:b.createdAt},...r.filter(x=>x.code!==b.code)].slice(0,10);
-  localStorage.setItem('recent_boards', JSON.stringify(r));
+function saveRecent(b){
+  let r=JSON.parse(localStorage.getItem('recent_boards')||'[]');
+  r=[{code:b.code,title:b.title,createdAt:b.createdAt},...r.filter(x=>x.code!==b.code)].slice(0,10);
+  localStorage.setItem('recent_boards',JSON.stringify(r));
 }
 
-document.getElementById('create-form')?.addEventListener('submit', e => {
+document.getElementById('create-form')?.addEventListener('submit',e=>{
   e.preventDefault();
-  const title     = document.getElementById('cf-title').value.trim() || 'Mi Tablero';
-  const desc      = document.getElementById('cf-desc').value.trim()  || 'Tablero @GmedranoTIC';
-  const wallpaper = document.getElementById('theme-grid')?._getSel() || 'editorial';
-  const code = makeCode(), ek = makeKey();
-  const b = { code, title, desc, wallpaper, editKey:ek, createdAt:new Date().toISOString() };
-  const keys = JSON.parse(localStorage.getItem('my_keys')||'{}'); keys[code]=ek;
-  localStorage.setItem('my_keys', JSON.stringify(keys));
-  saveRecent(b);
-  gun.get('gmt_boards').get(code).put(b);
-  const u = new URL(location.href);
+  const title    =document.getElementById('cf-title').value.trim()||'Mi Tablero';
+  const desc     =document.getElementById('cf-desc').value.trim()||'Tablero @GmedranoTIC';
+  const wallpaper=document.getElementById('theme-grid')?._getSel()||'editorial';
+  const code=makeCode(), ek=makeKey();
+
+  boardState={
+    code, title, desc, wallpaper, editKey:ek,
+    createdAt:new Date().toISOString(), cards:{}
+  };
+  boardCode=code; editKey=ek; isEditor=true;
+
+  const keys=JSON.parse(localStorage.getItem('my_keys')||'{}');
+  keys[code]=ek; localStorage.setItem('my_keys',JSON.stringify(keys));
+  saveRecent(boardState);
+
+  // Actualizar URL sin recargar — el host no necesita recargar
+  const u=new URL(location.href);
   u.searchParams.set('code',code); u.searchParams.set('key',ek); u.searchParams.set('role','editor');
-  location.href = u.toString();
+  history.pushState({},'',u.toString());
+
+  // Mostrar spinner
+  document.getElementById('create-btn').disabled=true;
+  document.getElementById('create-spin').style.display='';
+  document.getElementById('create-btn-label').textContent='Iniciando...';
+
+  openBoard();
 });
 
-document.getElementById('join-form')?.addEventListener('submit', e => {
+document.getElementById('join-form')?.addEventListener('submit',e=>{
   e.preventDefault();
-  const code = fmt(document.getElementById('jf-code').value);
-  if(code.length !== 6) { alert('El código debe tener 6 caracteres.'); return; }
-  const u = new URL(location.href);
+  const code=fmt(document.getElementById('jf-code').value);
+  if(code.length!==6){ alert('El código debe tener 6 caracteres.'); return; }
+  const u=new URL(location.href);
   u.searchParams.set('code',code); u.searchParams.set('role','viewer');
-  location.href = u.toString();
+  location.href=u.toString();
 });
 
-document.getElementById('jf-code')?.addEventListener('input', function() {
-  this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+document.getElementById('jf-code')?.addEventListener('input',function(){
+  this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
 });
 
 // ═══════════════════════════════════════════════════════════
-// BOARD
+// BOARD OPEN
 // ═══════════════════════════════════════════════════════════
-function openBoard() {
-  document.getElementById('lobby').style.display = 'none';
-  const appEl = document.getElementById('app'); appEl.style.display = 'flex';
-  setStatus('loading', 'Conectando al tablero ' + boardCode + '…');
+function openBoard(){
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('app').style.display='flex';
+  setStatus('loading','Iniciando conexión WebRTC…');
 
-  boardGun = gun.get('gmt_boards').get(boardCode);
-  cardsGun = gun.get('gmt_cards').get(boardCode);
+  if(isEditor){
+    startAsHost();
+  } else {
+    startAsGuest();
+  }
+}
 
-  boardGun.once(data => {
-    if(!data) {
-      if(isEditor) {
-        board = {code:boardCode, title:'Tablero @GmedranoTIC', desc:'', wallpaper:'editorial', editKey:editKey, createdAt:new Date().toISOString()};
-        boardGun.put(board);
-      } else {
-        setStatus('error', 'Tablero no encontrado o expirado. Pide al creador el enlace de editor.');
-        return;
-      }
-    } else {
-      board = data;
-      if(isEditor && board.editKey && board.editKey !== editKey) {
-        isEditor = false; editKey = null;
-        const u = new URL(location.href); u.searchParams.delete('key'); u.searchParams.set('role','viewer');
-        history.replaceState({}, '', u.toString());
-      }
-    }
-    const myKeys = JSON.parse(localStorage.getItem('my_keys')||'{}');
-    if(isEditor && editKey) { myKeys[boardCode]=editKey; localStorage.setItem('my_keys',JSON.stringify(myKeys)); }
-    saveRecent(board);
+// ─── HOST (editor que crea/posee el tablero) ────────────────
+// El host usa su código de tablero como PeerID
+function startAsHost(){
+  // Intentar usar el código del tablero como PeerID para que guests puedan conectar con el código
+  peer = new Peer(boardCode, PEER_CONFIG);
+
+  peer.on('open', peerId => {
     setStatus('ok');
-    renderHeader(); renderBg();
-    if(isEditor) { document.getElementById('fab').style.display='flex'; document.getElementById('theme-picker-wrap').style.display=''; buildThemeList(); }
+    renderHeader(); renderBg(); renderCards();
+    document.getElementById('fab').style.display='flex';
+    document.getElementById('theme-picker-wrap').style.display='';
+    document.getElementById('peers-indicator').style.display='flex';
+    buildThemeList();
+    updatePeerCount();
+    showSync('Tablero activo — esperando colaboradores');
   });
 
-  boardGun.on(data => {
-    if(!data) return;
-    board = data; renderHeader(); renderBg(); buildThemeList();
-    showSync('Tablero actualizado');
+  peer.on('error', err => {
+    // Si el ID ya está en uso (otro host activo con ese código),
+    // se conecta como guest-editor con acceso de edición
+    if(err.type === 'unavailable-id'){
+      peer.destroy();
+      peer = null;
+      startAsGuestEditor();
+    } else {
+      console.error('PeerJS error:', err);
+      setStatus('error','Error de conexión: '+err.message);
+    }
   });
 
-  cardsGun.map().on((data, cardId) => {
-    if(!data || data._) {
-      if(data === null && cards[cardId]) { delete cards[cardId]; renderCards(); }
-      return;
-    }
-    if(cardId === '_') return;
-    if(new Date(data.createdAt).getTime() + EXPIRY_MS <= Date.now()) {
-      cardsGun.get(cardId).put(null);
-      delete cards[cardId]; renderCards(); return;
-    }
-    if(typeof data.color === 'string') {
-      try { data.color = JSON.parse(data.color); } catch(e) { data.color = COLORS[0]; }
-    }
-    if(typeof data.comments === 'string') {
-      try { data.comments = JSON.parse(data.comments); } catch(e) { data.comments = {}; }
-    }
-    const isNew = !cards[cardId];
-    cards[cardId] = data;
-    renderCards();
-    if(isNew) showSync('Nueva nota recibida');
+  // Cuando un guest se conecta al host
+  peer.on('connection', conn => {
+    conn.on('open', ()=>{
+      guestConns.push(conn);
+      // Enviar el estado completo al guest recién conectado
+      conn.send({ type:'full-state', payload: serializeState() });
+      updatePeerCount();
+      showSync('Nuevo participante conectado');
+    });
+    conn.on('data', data => handleGuestMessage(conn, data));
+    conn.on('close', ()=>{
+      guestConns = guestConns.filter(c=>c.peer!==conn.peer);
+      updatePeerCount();
+    });
+    conn.on('error', e => console.warn('conn error', e));
   });
 
-  setInterval(() => { pruneExpired(); renderHeader(); }, 60000);
+  peer.on('close', ()=> setStatus('error','Conexión cerrada.'));
 }
 
-function setStatus(type, msg='') {
-  const el = document.getElementById('board-status'); if(!el) return;
-  el.style.display = type==='ok' ? 'none' : 'flex';
-  el.dataset.type  = type;
-  el.querySelector('.status-msg').textContent = msg;
+// Segundo editor con la clave correcta — se conecta al host como guest
+// pero el host le concede permisos de edición
+function startAsGuestEditor(){
+  isEditor = true; // mantener flag
+  startAsGuest();
 }
 
-function pruneExpired() {
-  const now = Date.now();
-  Object.keys(cards).forEach(id => {
-    if(new Date(cards[id].createdAt).getTime() + EXPIRY_MS <= now) {
-      cardsGun.get(id).put(null);
-      delete cards[id];
-    }
+// ─── GUEST (viewer o segundo editor) ────────────────────────
+function startAsGuest(){
+  setStatus('loading','Conectando al tablero '+boardCode+'…');
+  peer = new Peer(null, PEER_CONFIG);
+
+  peer.on('open', ()=>{
+    hostConn = peer.connect(boardCode, { reliable:true });
+
+    hostConn.on('open', ()=>{
+      setStatus('ok');
+      // Identificarse con nuestro rol
+      hostConn.send({ type:'hello', role: isEditor?'editor':'viewer', editKey: editKey||'' });
+      document.getElementById('peers-indicator').style.display='flex';
+      const dot=document.getElementById('peer-dot');
+      if(dot){ dot.classList.remove('offline'); }
+      updatePeerCount(1);
+    });
+
+    hostConn.on('data', data => handleHostMessage(data));
+
+    hostConn.on('close', ()=>{
+      setStatus('error','El anfitrión ha cerrado el tablero o se ha desconectado.');
+      const dot=document.getElementById('peer-dot');
+      if(dot){ dot.classList.add('offline'); }
+      document.getElementById('peer-count').textContent='Desconectado';
+    });
+
+    hostConn.on('error', e => {
+      setStatus('error','No se pudo conectar al tablero. ¿Está el creador conectado?');
+      const dot=document.getElementById('peer-dot');
+      if(dot){ dot.classList.add('offline'); }
+    });
   });
+
+  peer.on('error', err=>{
+    setStatus('error','Error WebRTC: '+err.message+'. Asegúrate de que el creador está conectado.');
+  });
+}
+
+function updatePeerCount(n){
+  const el=document.getElementById('peer-count'); if(!el)return;
+  const count = (n !== undefined) ? n : guestConns.length;
+  el.textContent = count===0 ? 'Esperando...' : count===1 ? '1 conectado' : count+' conectados';
+}
+
+// ─── MENSAJES HOST → GUEST ───────────────────────────────────
+function handleHostMessage(data){
+  if(!data || !data.type) return;
+
+  if(data.type==='full-state'){
+    // Recibimos el estado completo del tablero
+    const s = data.payload;
+    boardState = {
+      ...s,
+      cards: deserializeCards(s.cards)
+    };
+    if(!isEditor || !editKey){
+      // Verificar clave de edición
+      if(s.editKey && editKey && s.editKey!==editKey) isEditor=false;
+    }
+    saveRecent(boardState);
+    const myKeys=JSON.parse(localStorage.getItem('my_keys')||'{}');
+    if(isEditor && editKey){ myKeys[boardCode]=editKey; localStorage.setItem('my_keys',JSON.stringify(myKeys)); }
+    renderHeader(); renderBg(); renderCards();
+    if(isEditor){ document.getElementById('fab').style.display='flex'; document.getElementById('theme-picker-wrap').style.display=''; buildThemeList(); }
+    showSync('Tablero recibido ✓');
+  }
+
+  else if(data.type==='patch'){
+    // Actualización incremental de una o varias tarjetas
+    const {action, card, cardId, field, value} = data.payload;
+    if(action==='add' || action==='update'){
+      const c=deserializeCard(card);
+      boardState.cards[c.id]=c;
+      renderCards();
+      if(action==='add') showSync('Nueva nota recibida');
+    } else if(action==='delete'){
+      delete boardState.cards[cardId];
+      document.querySelector(`[data-card-id="${cardId}"]`)?.remove();
+      if(!Object.keys(boardState.cards).length) renderCards();
+    } else if(action==='field'){
+      if(boardState.cards[cardId]){
+        boardState.cards[cardId][field]=value;
+        const el=document.querySelector(`[data-card-id="${cardId}"]`);
+        if(el && field==='likes'){
+          const lk=el.querySelector('.like-count'); if(lk) lk.textContent=value;
+        }
+      }
+    } else if(action==='move'){
+      if(boardState.cards[cardId]){
+        boardState.cards[cardId].x=data.payload.x;
+        boardState.cards[cardId].y=data.payload.y;
+        boardState.cards[cardId].zIndex=data.payload.zIndex;
+        const el=document.querySelector(`[data-card-id="${cardId}"]`);
+        if(el && layoutMode==='canvas'){
+          el.style.left=data.payload.x+'%';
+          el.style.top=data.payload.y+'%';
+          el.style.zIndex=data.payload.zIndex;
+        }
+      }
+    } else if(action==='comment'){
+      if(boardState.cards[cardId]){
+        if(!boardState.cards[cardId].comments) boardState.cards[cardId].comments={};
+        boardState.cards[cardId].comments[data.payload.comment.id]=data.payload.comment;
+        const cc=document.querySelector(`[data-card-id="${cardId}"] .comment-count`);
+        if(cc) cc.textContent=Object.keys(boardState.cards[cardId].comments).length;
+      }
+    }
+  }
+
+  else if(data.type==='theme'){
+    boardState.wallpaper=data.payload;
+    renderBg(); buildThemeList();
+  }
+}
+
+// ─── MENSAJES GUEST → HOST ───────────────────────────────────
+function handleGuestMessage(conn, data){
+  if(!data || !data.type) return;
+
+  if(data.type==='hello'){
+    // El guest se identifica; si trae clave de editor correcta, se le concede
+    if(data.role==='editor' && data.editKey && data.editKey===boardState.editKey){
+      conn._isEditor=true;
+    }
+  }
+
+  else if(data.type==='patch'){
+    // Solo aceptar escrituras de guests editores
+    if(!conn._isEditor) return;
+    const {action, card, cardId, field, value} = data.payload;
+    if(action==='add' || action==='update'){
+      const c=deserializeCard(card);
+      boardState.cards[c.id]=c;
+      renderCards();
+    } else if(action==='delete'){
+      delete boardState.cards[cardId];
+      document.querySelector(`[data-card-id="${cardId}"]`)?.remove();
+      if(!Object.keys(boardState.cards).length) renderCards();
+    } else if(action==='field'){
+      if(boardState.cards[cardId]) boardState.cards[cardId][field]=value;
+      const el=document.querySelector(`[data-card-id="${cardId}"]`);
+      if(el && field==='likes'){ const lk=el.querySelector('.like-count'); if(lk) lk.textContent=value; }
+    } else if(action==='move'){
+      if(boardState.cards[cardId]){
+        boardState.cards[cardId].x=data.payload.x;
+        boardState.cards[cardId].y=data.payload.y;
+        boardState.cards[cardId].zIndex=data.payload.zIndex;
+      }
+    } else if(action==='comment'){
+      if(boardState.cards[cardId]){
+        if(!boardState.cards[cardId].comments) boardState.cards[cardId].comments={};
+        boardState.cards[cardId].comments[data.payload.comment.id]=data.payload.comment;
+      }
+    }
+    // Hacer broadcast al resto
+    broadcastPatch(data.payload, conn);
+  }
+
+  else if(data.type==='theme'){
+    if(!conn._isEditor) return;
+    boardState.wallpaper=data.payload;
+    renderBg(); buildThemeList();
+    broadcastTheme(data.payload, conn);
+  }
+}
+
+// ─── BROADCAST (host → todos los guests menos el origen) ─────
+function broadcastPatch(payload, skipConn=null){
+  const msg={type:'patch', payload};
+  guestConns.forEach(c=>{ if(c!==skipConn && c.open) c.send(msg); });
+}
+function broadcastTheme(wallpaper, skipConn=null){
+  const msg={type:'theme', payload:wallpaper};
+  guestConns.forEach(c=>{ if(c!==skipConn && c.open) c.send(msg); });
+}
+function broadcastFullState(){
+  const msg={type:'full-state', payload:serializeState()};
+  guestConns.forEach(c=>{ if(c.open) c.send(msg); });
+}
+
+// ─── ENVIAR PATCH (guest → host, o host → broadcast) ─────────
+function sendPatch(payload){
+  if(hostConn && hostConn.open){
+    hostConn.send({type:'patch', payload});
+  } else {
+    // Somos el host: aplicar local y broadcast
+    broadcastPatch(payload);
+  }
+}
+function sendTheme(wallpaper){
+  if(hostConn && hostConn.open){
+    hostConn.send({type:'theme', payload:wallpaper});
+  } else {
+    broadcastTheme(wallpaper);
+  }
+}
+
+// ─── SERIALIZACIÓN ────────────────────────────────────────────
+function serializeState(){
+  const cards={};
+  Object.values(boardState.cards).forEach(c=>{
+    cards[c.id]={
+      ...c,
+      color:    typeof c.color==='object'    ? JSON.stringify(c.color)    : c.color,
+      comments: typeof c.comments==='object' ? JSON.stringify(c.comments) : c.comments
+    };
+  });
+  return {...boardState, cards};
+}
+function deserializeCard(raw){
+  const c={...raw};
+  if(typeof c.color==='string')    { try{c.color=JSON.parse(c.color);}catch(e){c.color=COLORS[0];} }
+  if(typeof c.comments==='string') { try{c.comments=JSON.parse(c.comments);}catch(e){c.comments={};} }
+  return c;
+}
+function deserializeCards(rawCards){
+  const out={};
+  Object.values(rawCards||{}).forEach(c=>{ const d=deserializeCard(c); out[d.id]=d; });
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════════
-// HEADER & BG
+// STATUS / HEADER / BG
 // ═══════════════════════════════════════════════════════════
-function renderHeader() {
-  if(!board) return;
-  document.getElementById('hdr-board-title').textContent = board.title || 'Tablero';
-  document.getElementById('hdr-board-code').textContent  = 'Código: ' + boardCode;
-  const b = document.getElementById('hdr-badge');
-  b.textContent = isEditor ? '✍️ Editor' : '👁 Lectura';
-  b.className   = 'hdr-badge ' + (isEditor ? 'editor' : 'viewer');
-  const {text} = getRem(board.createdAt);
-  const el = document.getElementById('expiry-text'); if(el) el.textContent = 'Expira: ' + text;
+function setStatus(type, msg=''){
+  const el=document.getElementById('board-status'); if(!el)return;
+  el.style.display=type==='ok'?'none':'flex';
+  el.dataset.type=type;
+  el.querySelector('.status-msg').textContent=msg;
 }
-function renderBg() {
-  if(!board) return;
-  const m = document.getElementById('board-main');
-  THEMES.forEach(t => m.classList.remove(t.bg));
-  m.classList.add((THEMES.find(x=>x.id===board.wallpaper)||THEMES[0]).bg);
+function renderHeader(){
+  document.getElementById('hdr-board-title').textContent=boardState.title||'Tablero';
+  document.getElementById('hdr-board-code').textContent='Código: '+boardCode;
+  const b=document.getElementById('hdr-badge');
+  b.textContent=isEditor?'✍️ Editor':'👁 Lectura';
+  b.className='hdr-badge '+(isEditor?'editor':'viewer');
+  const {text}=getRem(boardState.createdAt||new Date().toISOString());
+  const el=document.getElementById('expiry-text'); if(el) el.textContent='Expira: '+text;
+}
+function renderBg(){
+  const m=document.getElementById('board-main');
+  THEMES.forEach(t=>m.classList.remove(t.bg));
+  m.classList.add((THEMES.find(x=>x.id===boardState.wallpaper)||THEMES[0]).bg);
 }
 
 // ═══════════════════════════════════════════════════════════
 // CARDS RENDER
 // ═══════════════════════════════════════════════════════════
-function renderCards() {
-  const con = document.getElementById('cards-container');
-  con.className = layoutMode==='grid' ? 'cards-grid' : 'cards-canvas';
-  const list = Object.values(cards)
-    .filter(c => !getRem(c.createdAt).expired)
-    .sort((a,b) => new Date(a.createdAt)-new Date(b.createdAt));
+function renderCards(){
+  const con=document.getElementById('cards-container');
+  con.className=layoutMode==='grid'?'cards-grid':'cards-canvas';
+  const list=Object.values(boardState.cards)
+    .filter(c=>!getRem(c.createdAt).expired)
+    .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
 
-  if(!list.length) {
-    con.innerHTML = `<div class="empty-state">
+  if(!list.length){
+    con.innerHTML=`<div class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
       <h3>Tablero vacío</h3>
       <p>${isEditor?'Añade la primera nota. Comparte el código <strong>'+boardCode+'</strong> con tu equipo.':'Aún sin contenido. Pide al editor que añada notas.'}</p>
@@ -819,46 +1045,38 @@ function renderCards() {
     </div>`; return;
   }
 
-  const existingIds = new Set([...con.querySelectorAll('[data-card-id]')].map(e=>e.dataset.cardId));
-  const currentIds  = new Set(list.map(c=>c.id));
-  existingIds.forEach(id => { if(!currentIds.has(id)) con.querySelector(`[data-card-id="${id}"]`)?.remove(); });
-  list.forEach(card => {
-    const existing = con.querySelector(`[data-card-id="${card.id}"]`);
-    if(existing) {
-      const tt = existing.querySelector('.card-timer-text'); if(tt) tt.textContent = '-'+getRem(card.createdAt).text;
-      const lk = existing.querySelector('.like-count');      if(lk) lk.textContent = card.likes||0;
-      const cc = existing.querySelector('.comment-count');
-      if(cc) cc.textContent = Object.keys(card.comments||{}).length;
-    } else {
-      con.appendChild(mkCard(card));
-    }
+  const existingIds=new Set([...con.querySelectorAll('[data-card-id]')].map(e=>e.dataset.cardId));
+  const currentIds =new Set(list.map(c=>c.id));
+  existingIds.forEach(id=>{ if(!currentIds.has(id)) con.querySelector(`[data-card-id="${id}"]`)?.remove(); });
+  list.forEach(card=>{
+    const existing=con.querySelector(`[data-card-id="${card.id}"]`);
+    if(existing){
+      const tt=existing.querySelector('.card-timer-text'); if(tt) tt.textContent='-'+getRem(card.createdAt).text;
+      const lk=existing.querySelector('.like-count');      if(lk) lk.textContent=card.likes||0;
+      const cc=existing.querySelector('.comment-count');   if(cc) cc.textContent=Object.keys(card.comments||{}).length;
+    } else { con.appendChild(mkCard(card)); }
   });
 }
 
-function mkCard(card) {
-  const {text:tt} = getRem(card.createdAt);
-  const c  = card.color || COLORS[0];
-  const bg = c.bg||'#fff', bd=c.border||'#eee', tx=c.text||'#111';
-  const coms = Object.values(card.comments||{});
-
-  const el = document.createElement('div');
-  el.className   = 'post-card card-enter' + (layoutMode==='canvas'?' canvas-mode':'');
-  el.dataset.cardId = card.id;
-  el.style.cssText  = `background:${bg};border-color:${bd};color:${tx};`;
-  if(layoutMode==='canvas') { el.style.left=(card.x||10)+'%'; el.style.top=(card.y||10)+'%'; el.style.zIndex=card.zIndex||10; }
-
-  el.innerHTML = `
+function mkCard(card){
+  const {text:tt}=getRem(card.createdAt);
+  const c=card.color||COLORS[0];
+  const bg=c.bg||'#fff', bd=c.border||'#eee', tx=c.text||'#111';
+  const coms=Object.values(card.comments||{});
+  const el=document.createElement('div');
+  el.className='post-card card-enter'+(layoutMode==='canvas'?' canvas-mode':'');
+  el.dataset.cardId=card.id;
+  el.style.cssText=`background:${bg};border-color:${bd};color:${tx};`;
+  if(layoutMode==='canvas'){ el.style.left=(card.x||10)+'%'; el.style.top=(card.y||10)+'%'; el.style.zIndex=card.zIndex||10; }
+  el.innerHTML=`
     <div class="card-top">
       <span class="card-author">✍️ ${esc(card.username||'Anónimo')}</span>
-      <span class="card-timer">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span class="card-timer-text">-${tt}</span>
-      </span>
+      <span class="card-timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="card-timer-text">-${tt}</span></span>
     </div>
-    ${card.imageUrl ? `<div class="card-image" onclick="openZoom('${card.id}')"><img src="${card.imageUrl}" loading="lazy" alt=""/><span class="zoom-hint">🔍 Ampliar</span></div>` : ''}
+    ${card.imageUrl?`<div class="card-image" onclick="openZoom('${card.id}')"><img src="${card.imageUrl}" loading="lazy" alt=""/><span class="zoom-hint">🔍 Ampliar</span></div>`:''}
     <div class="card-body">
-      ${card.title   ? `<div class="card-title">${esc(card.title)}</div>` : ''}
-      ${card.content ? `<div class="card-text">${esc(card.content)}</div>` : ''}
+      ${card.title?`<div class="card-title">${esc(card.title)}</div>`:''}
+      ${card.content?`<div class="card-text">${esc(card.content)}</div>`:''}
     </div>
     <div class="card-footer">
       <div class="card-actions">
@@ -871,25 +1089,20 @@ function mkCard(card) {
           <span class="comment-count">${coms.length}</span>
         </button>
       </div>
-      ${isEditor ? `<div class="card-editor-btns">
+      ${isEditor?`<div class="card-editor-btns">
         <button class="card-editor-btn" onclick="editCard('${card.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button class="card-editor-btn del" onclick="delCard('${card.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
-      </div>` : ''}
+      </div>`:''}
     </div>
     <div class="comments-panel" id="cp-${card.id}" style="display:none;">
       <div class="comments-list" id="cl-${card.id}">
-        ${coms.length ? coms.map(cm=>`
-          <div class="comment-item">
-            <div class="comment-meta"><span>${esc(cm.username)}</span><span>${new Date(cm.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>
-            <div class="comment-text">${esc(cm.content)}</div>
-          </div>`).join('') : '<p class="no-comments">Sin comentarios.</p>'}
+        ${coms.length?coms.map(cm=>`<div class="comment-item"><div class="comment-meta"><span>${esc(cm.username)}</span><span>${new Date(cm.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="comment-text">${esc(cm.content)}</div></div>`).join(''):'<p class="no-comments">Sin comentarios.</p>'}
       </div>
       <form class="comment-form" onsubmit="addComment(event,'${card.id}')">
         <input type="text" placeholder="Tu comentario..." maxlength="300" required/>
         <button class="comment-submit" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
       </form>
     </div>`;
-
   if(layoutMode==='canvas' && isEditor) attachDrag(el, card.id);
   return el;
 }
@@ -897,107 +1110,99 @@ function mkCard(card) {
 // ═══════════════════════════════════════════════════════════
 // CARD ACTIONS
 // ═══════════════════════════════════════════════════════════
-window.doLike = function(id, btn) {
-  const card = cards[id]; if(!card) return;
-  card.likes = (card.likes||0)+1;
-  btn.querySelector('.like-count').textContent = card.likes;
+window.doLike=function(id, btn){
+  const card=boardState.cards[id]; if(!card)return;
+  card.likes=(card.likes||0)+1;
+  btn.querySelector('.like-count').textContent=card.likes;
   btn.querySelector('svg').setAttribute('fill','currentColor');
-  cardsGun.get(id).get('likes').put(card.likes);
+  sendPatch({action:'field', cardId:id, field:'likes', value:card.likes});
 };
-
-window.toggleCom = function(id) {
-  const p = document.getElementById(`cp-${id}`);
-  p.style.display = p.style.display==='none' ? 'block' : 'none';
+window.toggleCom=function(id){
+  const p=document.getElementById(`cp-${id}`);
+  p.style.display=p.style.display==='none'?'block':'none';
 };
-
-window.addComment = function(e, id) {
+window.addComment=function(e,id){
   e.preventDefault();
-  const inp  = e.target.querySelector('input'), txt=inp.value.trim(); if(!txt) return;
-  const card = cards[id]; if(!card) return;
-  const nick = localStorage.getItem('board_nick')||'Colaborador';
-  const cm   = {id:uid(), username:nick, content:txt, createdAt:new Date().toISOString()};
+  const inp=e.target.querySelector('input'), txt=inp.value.trim(); if(!txt)return;
+  const card=boardState.cards[id]; if(!card)return;
+  const nick=localStorage.getItem('board_nick')||'Colaborador';
+  const cm={id:uid(), username:nick, content:txt, createdAt:new Date().toISOString()};
   if(!card.comments) card.comments={};
-  card.comments[cm.id] = cm;
-  const commentsStr = JSON.stringify(card.comments);
-  cardsGun.get(id).get('comments').put(commentsStr);
-  const list = document.getElementById(`cl-${id}`);
+  card.comments[cm.id]=cm;
+  sendPatch({action:'comment', cardId:id, comment:cm});
+  const list=document.getElementById(`cl-${id}`);
   list.querySelector('.no-comments')?.remove();
-  const item = document.createElement('div'); item.className='comment-item';
+  const item=document.createElement('div'); item.className='comment-item';
   item.innerHTML=`<div class="comment-meta"><span>${esc(nick)}</span><span>${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="comment-text">${esc(txt)}</div>`;
   list.appendChild(item); list.scrollTop=list.scrollHeight;
-  const cc = document.querySelector(`[data-card-id="${id}"] .comment-count`); if(cc) cc.textContent=Object.keys(card.comments).length;
+  const cc=document.querySelector(`[data-card-id="${id}"] .comment-count`); if(cc) cc.textContent=Object.keys(card.comments).length;
   inp.value='';
 };
-
-window.delCard = function(id) {
-  if(!confirm('¿Eliminar esta nota?')) return;
-  cardsGun.get(id).put(null);
-  delete cards[id];
+window.delCard=function(id){
+  if(!confirm('¿Eliminar esta nota?'))return;
+  delete boardState.cards[id];
   document.querySelector(`[data-card-id="${id}"]`)?.remove();
-  if(!Object.keys(cards).length) renderCards();
+  if(!Object.keys(boardState.cards).length) renderCards();
+  sendPatch({action:'delete', cardId:id});
 };
-
-window.editCard = function(id) { editingCardId=id; openPost(cards[id]); };
-window.openZoom = function(id) { const c=cards[id]; if(!c?.imageUrl) return; document.getElementById('zoom-img').src=c.imageUrl; document.getElementById('zoom-overlay').style.display='flex'; };
-window.closeZoom = function() { document.getElementById('zoom-overlay').style.display='none'; };
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeZoom(); });
+window.editCard=function(id){ editingCardId=id; openPost(boardState.cards[id]); };
+window.openZoom=function(id){ const c=boardState.cards[id]; if(!c?.imageUrl)return; document.getElementById('zoom-img').src=c.imageUrl; document.getElementById('zoom-overlay').style.display='flex'; };
+window.closeZoom=function(){ document.getElementById('zoom-overlay').style.display='none'; };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeZoom(); });
 
 // ═══════════════════════════════════════════════════════════
-// DRAG
+// DRAG (canvas mode)
 // ═══════════════════════════════════════════════════════════
-function attachDrag(el, id) {
+function attachDrag(el, id){
   let drag=false, ox=0, oy=0;
-  el.addEventListener('pointerdown', e => {
-    if(e.target.closest('button,input,textarea')) return;
+  el.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button,input,textarea'))return;
     drag=true; el.classList.add('dragging');
     const r=el.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top;
     el.setPointerCapture(e.pointerId); highestZ++; el.style.zIndex=highestZ; e.preventDefault();
   });
-  el.addEventListener('pointermove', e => {
-    if(!drag) return;
+  el.addEventListener('pointermove',e=>{
+    if(!drag)return;
     const p=el.parentElement.getBoundingClientRect();
     const wp=(el.offsetWidth/p.width)*100, hp=(el.offsetHeight/p.height)*100;
     let x=((e.clientX-p.left-ox)/p.width)*100, y=((e.clientY-p.top-oy)/p.height)*100;
     x=Math.max(0,Math.min(100-wp,x)); y=Math.max(0,Math.min(95-hp,y));
     el.style.left=x+'%'; el.style.top=y+'%';
   });
-  el.addEventListener('pointerup', e => {
-    if(!drag) return; drag=false; el.classList.remove('dragging');
+  el.addEventListener('pointerup',e=>{
+    if(!drag)return; drag=false; el.classList.remove('dragging');
     const x=parseFloat(el.style.left)||0, y=parseFloat(el.style.top)||0;
-    cardsGun.get(id).put({x, y, zIndex:highestZ});
+    if(boardState.cards[id]){ boardState.cards[id].x=x; boardState.cards[id].y=y; boardState.cards[id].zIndex=highestZ; }
+    sendPatch({action:'move', cardId:id, x, y, zIndex:highestZ});
   });
 }
 
 // ═══════════════════════════════════════════════════════════
-// LAYOUT
+// LAYOUT / THEME
 // ═══════════════════════════════════════════════════════════
-window.setLayout = function(mode) {
+window.setLayout=function(mode){
   layoutMode=mode;
   document.getElementById('layout-grid').classList.toggle('active',mode==='grid');
   document.getElementById('layout-canvas').classList.toggle('active',mode==='canvas');
   renderCards();
 };
-
-// ═══════════════════════════════════════════════════════════
-// THEME
-// ═══════════════════════════════════════════════════════════
-function buildThemeList() {
-  const list=document.getElementById('theme-list'); if(!list||!board) return;
+function buildThemeList(){
+  const list=document.getElementById('theme-list'); if(!list)return;
   list.innerHTML=THEMES.map(t=>`<button class="theme-list-btn" onclick="changeTheme('${t.id}')">
-    <span style="font-weight:${board.wallpaper===t.id?700:400};">${t.name}</span>
-    ${board.wallpaper===t.id?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+    <span style="font-weight:${boardState.wallpaper===t.id?700:400};">${t.name}</span>
+    ${boardState.wallpaper===t.id?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
   </button>`).join('');
 }
-window.changeTheme = function(id) {
-  board.wallpaper=id; renderBg(); buildThemeList();
+window.changeTheme=function(id){
+  boardState.wallpaper=id; renderBg(); buildThemeList();
   document.getElementById('theme-dropdown').style.display='none';
-  boardGun.get('wallpaper').put(id);
+  sendTheme(id);
 };
-document.getElementById('theme-picker-btn')?.addEventListener('click', () => {
+document.getElementById('theme-picker-btn')?.addEventListener('click',()=>{
   const dd=document.getElementById('theme-dropdown');
   dd.style.display=dd.style.display==='none'?'block':'none';
 });
-document.addEventListener('click', e => {
+document.addEventListener('click',e=>{
   if(!document.getElementById('theme-picker-wrap')?.contains(e.target))
     document.getElementById('theme-dropdown').style.display='none';
 });
@@ -1005,7 +1210,7 @@ document.addEventListener('click', e => {
 // ═══════════════════════════════════════════════════════════
 // POST MODAL
 // ═══════════════════════════════════════════════════════════
-window.openPost = function(card=null) {
+window.openPost=function(card=null){
   editingCardId=card?.id||null; currentImageBase64=card?.imageUrl||null;
   document.getElementById('post-modal-title').textContent=card?'Editar Nota':'Nueva Nota';
   document.getElementById('post-btn-label').textContent=card?'Guardar':'Publicar';
@@ -1015,23 +1220,23 @@ window.openPost = function(card=null) {
   updateCounter(); buildColorPicker(card?.color||COLORS[0]); buildDrop(card?.imageUrl||null);
   document.getElementById('post-modal').style.display='flex';
 };
-function closePost() { document.getElementById('post-modal').style.display='none'; editingCardId=null; currentImageBase64=null; }
+function closePost(){ document.getElementById('post-modal').style.display='none'; editingCardId=null; currentImageBase64=null; }
 document.getElementById('post-modal-close')?.addEventListener('click',closePost);
 document.getElementById('post-cancel')?.addEventListener('click',closePost);
 document.getElementById('post-modal')?.addEventListener('click',e=>{ if(e.target===e.currentTarget) closePost(); });
 document.getElementById('pf-content')?.addEventListener('input',updateCounter);
-function updateCounter() { const v=document.getElementById('pf-content')?.value||''; const el=document.getElementById('content-counter'); if(el)el.textContent=`${v.length}/1200`; }
+function updateCounter(){ const v=document.getElementById('pf-content')?.value||''; const el=document.getElementById('content-counter'); if(el) el.textContent=`${v.length}/1200`; }
 
-function buildColorPicker(cur) {
+function buildColorPicker(cur){
   selectedColor=(typeof cur==='object'&&cur?.bg)?cur:COLORS[0];
-  const cp=document.getElementById('color-picker'); if(!cp) return;
+  const cp=document.getElementById('color-picker'); if(!cp)return;
   cp.innerHTML=COLORS.map((c,i)=>`<div class="color-swatch ${selectedColor.bg===c.bg?'active':''}" style="background:${c.bg};border-color:${c.border};" title="${c.name}" onclick="selColor(${i})"></div>`).join('');
 }
-window.selColor = function(i) { selectedColor=COLORS[i]; document.querySelectorAll('.color-swatch').forEach((el,j)=>el.classList.toggle('active',j===i)); };
+window.selColor=function(i){ selectedColor=COLORS[i]; document.querySelectorAll('.color-swatch').forEach((el,j)=>el.classList.toggle('active',j===i)); };
 
-function buildDrop(existing) {
-  const wrap=document.getElementById('drop-zone-wrap'); if(!wrap) return;
-  if(existing) {
+function buildDrop(existing){
+  const wrap=document.getElementById('drop-zone-wrap'); if(!wrap)return;
+  if(existing){
     wrap.innerHTML=`<div class="img-preview"><img src="${existing}" alt="preview"/>
       <button class="img-remove" type="button" onclick="rmImg()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
   } else {
@@ -1047,40 +1252,42 @@ function buildDrop(existing) {
     dz?.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');pickFile(e.dataTransfer.files[0]);});
   }
 }
-window.rmImg   = function() { currentImageBase64=null; buildDrop(null); };
-window.pickFile= async function(file) {
-  if(!file||!file.type.startsWith('image/')) return;
+window.rmImg=function(){ currentImageBase64=null; buildDrop(null); };
+window.pickFile=async function(file){
+  if(!file||!file.type.startsWith('image/'))return;
   document.getElementById('drop-zone-wrap').innerHTML='<div class="compressing"><div class="spin"></div><span>Optimizando imagen...</span></div>';
-  try { currentImageBase64=await compressImg(file); buildDrop(currentImageBase64); }
-  catch(err) { console.error(err); buildDrop(null); }
+  try{ currentImageBase64=await compressImg(file); buildDrop(currentImageBase64); }
+  catch(err){ console.error(err); buildDrop(null); }
 };
 
-document.getElementById('post-form')?.addEventListener('submit', e => {
+document.getElementById('post-form')?.addEventListener('submit',e=>{
   e.preventDefault();
   const username=document.getElementById('pf-username').value.trim()||'Anónimo';
   const title   =document.getElementById('pf-title').value.trim();
   const content =document.getElementById('pf-content').value.trim();
-  if(!content && !currentImageBase64) { alert('Añade texto o imagen.'); return; }
-  localStorage.setItem('board_nick', username);
+  if(!content&&!currentImageBase64){ alert('Añade texto o imagen.'); return; }
+  localStorage.setItem('board_nick',username);
 
-  if(editingCardId) {
-    const patch = { username, title, content, color: JSON.stringify(selectedColor), imageUrl: currentImageBase64||cards[editingCardId]?.imageUrl||null };
-    cardsGun.get(editingCardId).put(patch);
-    Object.assign(cards[editingCardId]||{}, {...patch, color:selectedColor});
+  if(editingCardId){
+    const patch={username,title,content,color:JSON.stringify(selectedColor),imageUrl:currentImageBase64||boardState.cards[editingCardId]?.imageUrl||null};
+    Object.assign(boardState.cards[editingCardId]||{},{...patch,color:selectedColor});
+    const card={...boardState.cards[editingCardId],...patch,color:JSON.stringify(selectedColor)};
+    sendPatch({action:'update', card});
+    renderCards();
     showSync('Nota actualizada');
   } else {
     highestZ++;
-    const id = uid();
-    const card = {
+    const id=uid();
+    const card={
       id, boardCode, username, title, content,
-      imageUrl: currentImageBase64||null,
-      color: JSON.stringify(selectedColor),
-      likes: 0, x: Math.random()*50+10, y: Math.random()*40+10,
-      zIndex: highestZ, comments: '{}',
-      createdAt: new Date().toISOString()
+      imageUrl:currentImageBase64||null,
+      color:JSON.stringify(selectedColor),
+      likes:0, x:Math.random()*50+10, y:Math.random()*40+10,
+      zIndex:highestZ, comments:'{}',
+      createdAt:new Date().toISOString()
     };
-    cardsGun.get(id).put(card);
-    cards[id] = {...card, color:selectedColor, comments:{}};
+    boardState.cards[id]={...card, color:selectedColor, comments:{}};
+    sendPatch({action:'add', card});
     renderCards();
     showSync('Nota publicada ✓');
   }
@@ -1090,17 +1297,16 @@ document.getElementById('post-form')?.addEventListener('submit', e => {
 // ═══════════════════════════════════════════════════════════
 // SHARE
 // ═══════════════════════════════════════════════════════════
-window.setShareTab = function(tab) {
+window.setShareTab=function(tab){
   _shareTab=tab;
   document.getElementById('tab-viewer')?.classList.toggle('active',tab==='viewer');
   document.getElementById('tab-editor')?.classList.toggle('active',tab==='editor');
   renderShareBody();
 };
-function renderShareBody() {
-  if(!board) return;
+function renderShareBody(){
   const base=location.origin+location.pathname;
   const vUrl=`${base}?code=${boardCode}&role=viewer`;
-  const eUrl=`${base}?code=${boardCode}&key=${board.editKey}&role=editor`;
+  const eUrl=`${base}?code=${boardCode}&key=${boardState.editKey||editKey}&role=editor`;
   const url=_shareTab==='viewer'?vUrl:eUrl;
   const isEd=_shareTab==='editor';
   document.getElementById('share-modal-body').innerHTML=`
@@ -1121,13 +1327,13 @@ function renderShareBody() {
     <div class="link-copy-row">
       <input class="link-input" type="text" readonly value="${url}" id="share-url-input"/>
       <button class="copy-btn" id="copy-btn" onclick="copyUrl()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copiar
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar
       </button>
-    </div>`;
+    </div>
+    <p style="font-size:11px;opacity:.45;margin-top:12px;line-height:1.6;">⚠️ La colaboración en tiempo real requiere que el creador del tablero esté conectado (actúa de anfitrión P2P). Si el creador se desconecta, los viewers pierden el stream en vivo pero pueden recargar cuando vuelva.</p>`;
 }
-window.copyUrl = function() {
-  const inp=document.getElementById('share-url-input'); if(!inp) return;
+window.copyUrl=function(){
+  const inp=document.getElementById('share-url-input'); if(!inp)return;
   navigator.clipboard.writeText(inp.value).then(()=>{
     const btn=document.getElementById('copy-btn');
     btn.classList.add('copied');
@@ -1140,301 +1346,144 @@ document.getElementById('share-modal-close')?.addEventListener('click',()=>docum
 document.getElementById('share-modal')?.addEventListener('click',e=>{ if(e.target===e.currentTarget)e.currentTarget.style.display='none'; });
 
 // ═══════════════════════════════════════════════════════════
-// PDF — renderizado directo en canvas (sin html2canvas)
+// PDF — renderizado directo en canvas
 // ═══════════════════════════════════════════════════════════
-document.getElementById('pdf-btn')?.addEventListener('click', async () => {
-  const loading = document.getElementById('pdf-loading');
-  loading.classList.add('visible');
-  try {
-    const list = Object.values(cards)
-      .filter(c => !getRem(c.createdAt).expired)
-      .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+document.getElementById('pdf-btn')?.addEventListener('click',async()=>{
+  const loading=document.getElementById('pdf-loading'); loading.classList.add('visible');
+  try{
+    const list=Object.values(boardState.cards).filter(c=>!getRem(c.createdAt).expired).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+    if(!list.length){ alert('El tablero está vacío.'); return; }
+    const COLS=Math.min(3,list.length), CARD_W=320, CARD_H=280, PAD=24, TOP=90;
+    const ROWS=Math.ceil(list.length/COLS);
+    const W=COLS*(CARD_W+PAD)+PAD, H=TOP+ROWS*(CARD_H+PAD)+PAD+50;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const ctx=cv.getContext('2d');
 
-    if (!list.length) { alert('El tablero está vacío.'); return; }
-
-    // Parámetros de layout
-    const COLS   = Math.min(3, list.length);
-    const CARD_W = 320, CARD_H = 280, PAD = 24, TOP = 90;
-    const ROWS   = Math.ceil(list.length / COLS);
-    const W      = COLS * (CARD_W + PAD) + PAD;
-    const H      = TOP + ROWS * (CARD_H + PAD) + PAD + 50;
-
-    const cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d');
-
-    // Fondo
-    ctx.fillStyle = '#faf7f2';
-    ctx.fillRect(0, 0, W, H);
-
-    // Patrón de puntos
-    ctx.fillStyle = 'rgba(26,21,18,0.05)';
-    for(let x=0; x<W; x+=22) for(let y=0; y<H; y+=22) {
-      ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
-    }
-
-    // Cabecera
-    ctx.fillStyle = '#1a1512';
-    ctx.fillRect(0, 0, W, 60);
-    ctx.fillStyle = '#c8541a';
-    ctx.fillRect(0, 0, W, 8);
-
-    ctx.fillStyle = '#faf7f2';
-    ctx.font = 'bold 22px serif';
-    ctx.fillText('Comparte con @GmedranoTIC', PAD, 40);
-
-    ctx.fillStyle = 'rgba(250,247,242,0.5)';
-    ctx.font = '11px monospace';
-    ctx.fillText(`Tablero: ${boardCode}  ·  ${new Date().toLocaleDateString('es-ES')}`, PAD, 56);
-
-    // Marca de agua diagonal
-    ctx.save();
-    ctx.translate(W/2, H/2);
-    ctx.rotate(-Math.PI/8);
-    ctx.font = 'bold 72px serif';
-    ctx.fillStyle = 'rgba(200,84,26,0.045)';
-    ctx.textAlign = 'center';
-    ctx.fillText('@GmedranoTIC', 0, 0);
-    ctx.restore();
-
-    // Polyfill roundRect para Safari/Firefox antiguos
-    if (!CanvasRenderingContext2D.prototype.roundRect) {
-      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r) {
-        const rr = typeof r === 'number' ? [r,r,r,r] : (r||[0,0,0,0]);
-        const [tl=0,tr=0,br=0,bl=0] = rr;
-        this.moveTo(x+tl, y);
-        this.lineTo(x+w-tr, y); this.arcTo(x+w,y, x+w,y+tr, tr);
-        this.lineTo(x+w, y+h-br); this.arcTo(x+w,y+h, x+w-br,y+h, br);
-        this.lineTo(x+bl, y+h); this.arcTo(x,y+h, x,y+h-bl, bl);
-        this.lineTo(x, y+tl); this.arcTo(x,y, x+tl,y, tl);
-        this.closePath();
+    // Polyfill roundRect
+    if(!CanvasRenderingContext2D.prototype.roundRect){
+      CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+        const rr=typeof r==='number'?[r,r,r,r]:(r||[0,0,0,0]);
+        const[tl=0,tr=0,br=0,bl=0]=rr;
+        this.moveTo(x+tl,y); this.lineTo(x+w-tr,y); this.arcTo(x+w,y,x+w,y+tr,tr);
+        this.lineTo(x+w,y+h-br); this.arcTo(x+w,y+h,x+w-br,y+h,br);
+        this.lineTo(x+bl,y+h); this.arcTo(x,y+h,x,y+h-bl,bl);
+        this.lineTo(x,y+tl); this.arcTo(x,y,x+tl,y,tl); this.closePath();
       };
     }
 
-    // Cargar imágenes en paralelo
-    const imgCache = {};
-    await Promise.all(list.map(card => new Promise(res => {
-      if (!card.imageUrl) { res(); return; }
-      const img = new Image();
-      img.onload  = () => { imgCache[card.id] = img; res(); };
-      img.onerror = () => res();
-      img.src = card.imageUrl;
+    ctx.fillStyle='#faf7f2'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(26,21,18,0.05)';
+    for(let x=0;x<W;x+=22) for(let y=0;y<H;y+=22){ ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill(); }
+    ctx.fillStyle='#1a1512'; ctx.fillRect(0,0,W,60);
+    ctx.fillStyle='#c8541a'; ctx.fillRect(0,0,W,8);
+    ctx.fillStyle='#faf7f2'; ctx.font='bold 20px serif'; ctx.textAlign='left';
+    ctx.fillText('Comparte con @GmedranoTIC',PAD,40);
+    ctx.fillStyle='rgba(250,247,242,0.5)'; ctx.font='11px monospace';
+    ctx.fillText(`Tablero: ${boardCode}  ·  ${new Date().toLocaleDateString('es-ES')}`,PAD,56);
+    ctx.save(); ctx.translate(W/2,H/2); ctx.rotate(-Math.PI/8);
+    ctx.font='bold 72px serif'; ctx.fillStyle='rgba(200,84,26,0.045)'; ctx.textAlign='center';
+    ctx.fillText('@GmedranoTIC',0,0); ctx.restore();
+
+    const imgCache={};
+    await Promise.all(list.map(card=>new Promise(res=>{
+      if(!card.imageUrl){res();return;}
+      const img=new Image(); img.onload=()=>{imgCache[card.id]=img;res();}; img.onerror=()=>res(); img.src=card.imageUrl;
     })));
 
-    // Dibujar tarjetas
-    list.forEach((card, i) => {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
-      const x   = PAD + col * (CARD_W + PAD);
-      const y   = TOP + row * (CARD_H + PAD);
-      const c   = card.color || COLORS[0];
-
-      // Sombra
-      ctx.shadowColor   = 'rgba(26,21,18,0.12)';
-      ctx.shadowBlur    = 10;
-      ctx.shadowOffsetY = 4;
-
-      // Fondo tarjeta
-      ctx.fillStyle = c.bg || '#fff';
-      ctx.beginPath();
-      ctx.roundRect(x, y, CARD_W, CARD_H, 4);
-      ctx.fill();
-
-      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
-      // Borde
-      ctx.strokeStyle = c.border || '#e8e2d5';
-      ctx.lineWidth   = 1;
-      ctx.beginPath();
-      ctx.roundRect(x, y, CARD_W, CARD_H, 4);
-      ctx.stroke();
-
-      // Franja superior coloreada
-      ctx.fillStyle = c.bg === '#ffffff' || c.bg === '#fdfbf7' ? '#c8541a' : (c.border || '#c8541a');
-      ctx.beginPath();
-      ctx.roundRect(x, y, CARD_W, 6, [4, 4, 0, 0]);
-      ctx.fill();
-
-      let curY = y + 16;
-
-      // Autor
-      ctx.fillStyle = c.text || '#1a1512';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.globalAlpha = 0.6;
-      ctx.fillText(('✍ ' + (card.username || 'Anónimo')).slice(0, 38), x + 10, curY);
-      ctx.globalAlpha = 1;
-      curY += 16;
-
-      // Imagen si existe
-      const img = imgCache[card.id];
-      if (img) {
-        const ih = Math.min(100, CARD_H * 0.35);
-        const iw = CARD_W - 2;
-        const sr = img.width / img.height;
-        const dr = iw / ih;
-        let sx=0, sy=0, sw=img.width, sh=img.height;
-        if (sr > dr) { sw = img.height*dr; sx = (img.width-sw)/2; }
-        else          { sh = img.width/dr; sy = (img.height-sh)/2; }
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(x+1, curY, iw, ih);
-        ctx.clip();
-        ctx.drawImage(img, sx, sy, sw, sh, x+1, curY, iw, ih);
-        ctx.restore();
-        curY += ih + 8;
+    list.forEach((card,i)=>{
+      const col=i%COLS, row=Math.floor(i/COLS);
+      const x=PAD+col*(CARD_W+PAD), y=TOP+row*(CARD_H+PAD);
+      const c=card.color||COLORS[0];
+      ctx.shadowColor='rgba(26,21,18,0.12)'; ctx.shadowBlur=10; ctx.shadowOffsetY=4;
+      ctx.fillStyle=c.bg||'#fff'; ctx.beginPath(); ctx.roundRect(x,y,CARD_W,CARD_H,4); ctx.fill();
+      ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+      ctx.strokeStyle=c.border||'#e8e2d5'; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x,y,CARD_W,CARD_H,4); ctx.stroke();
+      ctx.fillStyle=c.bg==='#ffffff'||c.bg==='#fdfbf7'?'#c8541a':(c.border||'#c8541a');
+      ctx.fillRect(x,y,CARD_W,6);
+      let curY=y+16;
+      ctx.fillStyle=c.text||'#1a1512'; ctx.font='bold 10px sans-serif'; ctx.textAlign='left'; ctx.globalAlpha=0.6;
+      ctx.fillText(('✍ '+(card.username||'Anónimo')).slice(0,38),x+10,curY); ctx.globalAlpha=1; curY+=16;
+      const img=imgCache[card.id];
+      if(img){
+        const ih=Math.min(100,CARD_H*0.35), iw=CARD_W-2;
+        const sr=img.width/img.height, dr=iw/ih;
+        let sx=0,sy=0,sw=img.width,sh=img.height;
+        if(sr>dr){sw=img.height*dr;sx=(img.width-sw)/2;}else{sh=img.width/dr;sy=(img.height-sh)/2;}
+        ctx.save(); ctx.beginPath(); ctx.rect(x+1,curY,iw,ih); ctx.clip();
+        ctx.drawImage(img,sx,sy,sw,sh,x+1,curY,iw,ih); ctx.restore(); curY+=ih+8;
       }
-
-      // Título
-      if (card.title) {
-        ctx.fillStyle = c.text || '#1a1512';
-        ctx.font = 'bold 13px serif';
-        ctx.textAlign = 'left';
-        const tLines = wrapText(ctx, card.title, CARD_W - 20);
-        tLines.slice(0, 2).forEach(line => {
-          ctx.fillText(line, x+10, curY); curY += 17;
-        });
+      if(card.title){
+        ctx.fillStyle=c.text||'#1a1512'; ctx.font='bold 13px serif'; ctx.textAlign='left';
+        wrapText(ctx,card.title,CARD_W-20).slice(0,2).forEach(line=>{ctx.fillText(line,x+10,curY);curY+=17;});
       }
-
-      // Contenido
-      if (card.content) {
-        ctx.fillStyle = c.text || '#1a1512';
-        ctx.globalAlpha = 0.82;
-        ctx.font = '11.5px sans-serif';
-        const maxLines = img ? 4 : 8;
-        const cLines = wrapText(ctx, card.content, CARD_W - 20);
-        cLines.slice(0, maxLines).forEach(line => {
-          if (curY < y + CARD_H - 20) { ctx.fillText(line, x+10, curY); curY += 16; }
-        });
-        ctx.globalAlpha = 1;
+      if(card.content){
+        ctx.fillStyle=c.text||'#1a1512'; ctx.globalAlpha=0.82; ctx.font='11.5px sans-serif';
+        wrapText(ctx,card.content,CARD_W-20).slice(0,img?4:8).forEach(line=>{if(curY<y+CARD_H-20){ctx.fillText(line,x+10,curY);curY+=16;}});
+        ctx.globalAlpha=1;
       }
-
-      // Footer: likes y tiempo restante
-      ctx.fillStyle = c.border || '#e8e2d5';
-      ctx.fillRect(x, y + CARD_H - 22, CARD_W, 1);
-      ctx.fillStyle = c.text || '#1a1512';
-      ctx.globalAlpha = 0.5;
-      ctx.font = '9px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(`♥ ${card.likes||0}  ·  -${getRem(card.createdAt).text}`, x+10, y+CARD_H-8);
-      ctx.globalAlpha = 1;
+      ctx.fillStyle=c.border||'#e8e2d5'; ctx.fillRect(x,y+CARD_H-22,CARD_W,1);
+      ctx.fillStyle=c.text||'#1a1512'; ctx.globalAlpha=0.5; ctx.font='9px monospace'; ctx.textAlign='left';
+      ctx.fillText(`♥ ${card.likes||0}  ·  -${getRem(card.createdAt).text}`,x+10,y+CARD_H-8); ctx.globalAlpha=1;
     });
 
-    // Pie
-    ctx.fillStyle = 'rgba(26,21,18,0.35)';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('@GmedranoTIC · tablero colaborativo temporal', W/2, H - 12);
+    ctx.fillStyle='rgba(26,21,18,0.35)'; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText('@GmedranoTIC · tablero colaborativo temporal',W/2,H-12);
 
-    // Exportar
-    const {jsPDF} = window.jspdf;
-    const orient  = W > H ? 'landscape' : 'portrait';
-    const pdf     = new jsPDF({orientation: orient, unit:'px', format:[W, H], hotfixes:['px_scaling']});
-    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, W, H);
+    const{jsPDF}=window.jspdf;
+    const orient=W>H?'landscape':'portrait';
+    const pdf=new jsPDF({orientation:orient,unit:'px',format:[W,H],hotfixes:['px_scaling']});
+    pdf.addImage(cv.toDataURL('image/png'),'PNG',0,0,W,H);
     pdf.save(`GmedranoTIC_${boardCode}.pdf`);
-
-  } catch(err) { console.error(err); alert('Error al generar el PDF: ' + err.message); }
-  finally { loading.classList.remove('visible'); }
+  }catch(err){console.error(err);alert('Error al generar el PDF: '+err.message);}
+  finally{loading.classList.remove('visible');}
 });
 
-function wrapText(ctx, text, maxW) {
-  const words = text.split(' ');
-  const lines = [];
-  let cur = '';
-  for (const w of words) {
-    const test = cur ? cur + ' ' + w : w;
-    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
-    else cur = test;
-  }
-  if (cur) lines.push(cur);
-  return lines;
+function wrapText(ctx,text,maxW){
+  const words=text.split(' '), lines=[]; let cur='';
+  for(const w of words){ const t=cur?cur+' '+w:w; if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t; }
+  if(cur) lines.push(cur); return lines;
 }
 
 // ═══════════════════════════════════════════════════════════
-// GUARDAR TABLERO COMO ARCHIVO LOCAL
+// GUARDAR / CARGAR
 // ═══════════════════════════════════════════════════════════
-document.getElementById('save-btn')?.addEventListener('click', () => {
-  if (!board || !boardCode) return;
-  const snapshot = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    board: {
-      code:      board.code,
-      title:     board.title,
-      desc:      board.desc,
-      wallpaper: board.wallpaper,
-      editKey:   board.editKey,
-      createdAt: board.createdAt
-    },
-    cards: Object.values(cards).filter(c => !getRem(c.createdAt).expired).map(c => ({
+document.getElementById('save-btn')?.addEventListener('click',()=>{
+  const snapshot={
+    version:1, exportedAt:new Date().toISOString(),
+    board:{ code:boardState.code, title:boardState.title, desc:boardState.desc, wallpaper:boardState.wallpaper, editKey:boardState.editKey, createdAt:boardState.createdAt },
+    cards:Object.values(boardState.cards).filter(c=>!getRem(c.createdAt).expired).map(c=>({
       ...c,
-      color:    typeof c.color === 'object' ? JSON.stringify(c.color) : c.color,
-      comments: typeof c.comments === 'object' ? JSON.stringify(c.comments) : c.comments
+      color:    typeof c.color==='object'    ? JSON.stringify(c.color)    : c.color,
+      comments: typeof c.comments==='object' ? JSON.stringify(c.comments) : c.comments
     }))
   };
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
-  a.download = `GmedranoTIC_${boardCode}.gmt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  showSync('Tablero guardado ✓');
+  const blob=new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`GmedranoTIC_${boardCode}.gmt`; a.click();
+  URL.revokeObjectURL(a.href); showSync('Tablero guardado ✓');
 });
 
-// ═══════════════════════════════════════════════════════════
-// CARGAR TABLERO DESDE ARCHIVO LOCAL
-// ═══════════════════════════════════════════════════════════
-document.getElementById('load-btn')?.addEventListener('click', () => {
-  if (!isEditor) { alert('Solo los editores pueden cargar un tablero.'); return; }
+document.getElementById('load-btn')?.addEventListener('click',()=>{
+  if(!isEditor){ alert('Solo los editores pueden cargar un tablero.'); return; }
   document.getElementById('load-file-input').click();
 });
-
-document.getElementById('load-file-input')?.addEventListener('change', function() {
-  const file = this.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const snap = JSON.parse(e.target.result);
-      if (!snap.version || !snap.board || !Array.isArray(snap.cards)) {
-        alert('Archivo no válido. Usa un archivo .gmt exportado desde esta aplicación.'); return;
-      }
-      if (!confirm(`¿Cargar el tablero "${snap.board.title}" (${snap.cards.length} notas)?\n\nEsto añadirá las notas al tablero actual. Las notas existentes no se borrarán.`)) return;
-
-      // Restaurar metadatos del tablero si el código coincide
-      if (snap.board.code === boardCode) {
-        boardGun.put({
-          title:     snap.board.title,
-          desc:      snap.board.desc,
-          wallpaper: snap.board.wallpaper || 'editorial'
-        });
-      }
-
-      // Insertar tarjetas con nuevos IDs para evitar colisiones
-      snap.cards.forEach(card => {
-        // Recalcular expiración desde ahora para que no expire inmediatamente
-        const newId   = uid();
-        const newCard = {
-          ...card,
-          id:        newId,
-          boardCode: boardCode,
-          createdAt: new Date().toISOString()   // resetear timer a 24h desde ahora
-        };
-        cardsGun.get(newId).put(newCard);
-        // Optimistic local update
-        let color = newCard.color;
-        if (typeof color === 'string') { try { color = JSON.parse(color); } catch(e){ color=COLORS[0]; } }
-        let comments = newCard.comments;
-        if (typeof comments === 'string') { try { comments = JSON.parse(comments); } catch(e){ comments={}; } }
-        cards[newId] = {...newCard, color, comments};
+document.getElementById('load-file-input')?.addEventListener('change',function(){
+  const file=this.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const snap=JSON.parse(e.target.result);
+      if(!snap.version||!snap.board||!Array.isArray(snap.cards)){ alert('Archivo no válido.'); return; }
+      if(!confirm(`¿Cargar "${snap.board.title}" (${snap.cards.length} notas)?\n\nSe añadirán al tablero actual sin borrar las existentes.`)) return;
+      snap.cards.forEach(card=>{
+        const newId=uid();
+        const newCard={...card, id:newId, boardCode:boardCode, createdAt:new Date().toISOString()};
+        const deserialized=deserializeCard(newCard);
+        boardState.cards[newId]=deserialized;
+        sendPatch({action:'add', card:{...newCard}});
       });
-
-      renderCards();
-      showSync(`${snap.cards.length} notas cargadas ✓`);
-    } catch(err) {
-      console.error(err);
-      alert('Error al leer el archivo: ' + err.message);
-    }
-    this.value = ''; // reset para poder volver a cargar el mismo fichero
+      renderCards(); showSync(`${snap.cards.length} notas cargadas ✓`);
+    }catch(err){ console.error(err); alert('Error al leer el archivo: '+err.message); }
+    this.value='';
   };
   reader.readAsText(file);
 });
@@ -1442,13 +1491,13 @@ document.getElementById('load-file-input')?.addEventListener('change', function(
 // ═══════════════════════════════════════════════════════════
 // FULLSCREEN
 // ═══════════════════════════════════════════════════════════
-document.getElementById('fs-btn')?.addEventListener('click', () => {
+document.getElementById('fs-btn')?.addEventListener('click',()=>{
   const el=document.getElementById('app');
   if(!document.fullscreenElement) el.requestFullscreen?.().catch(()=>{});
   else document.exitFullscreen?.();
 });
-document.addEventListener('fullscreenchange', () => {
-  const icon=document.getElementById('fs-icon'); if(!icon) return;
+document.addEventListener('fullscreenchange',()=>{
+  const icon=document.getElementById('fs-icon'); if(!icon)return;
   icon.innerHTML=document.fullscreenElement
     ?'<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
     :'<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
@@ -1456,7 +1505,22 @@ document.addEventListener('fullscreenchange', () => {
 
 // FAB & BACK
 document.getElementById('fab')?.addEventListener('click',()=>openPost());
-document.getElementById('back-to-lobby')?.addEventListener('click',e=>{ e.preventDefault(); location.href=location.pathname; });
+document.getElementById('back-to-lobby')?.addEventListener('click',e=>{ e.preventDefault?.(); showLobby(); history.pushState({},'',location.pathname); });
+
+// ═══════════════════════════════════════════════════════════
+// PRUNING + TIMER
+// ═══════════════════════════════════════════════════════════
+setInterval(()=>{
+  const now=Date.now();
+  let changed=false;
+  Object.keys(boardState.cards).forEach(id=>{
+    if(new Date(boardState.cards[id].createdAt).getTime()+EXPIRY_MS<=now){
+      delete boardState.cards[id]; changed=true;
+    }
+  });
+  if(changed) renderCards();
+  renderHeader();
+}, 60000);
 
 // ═══════════════════════════════════════════════════════════
 // START
